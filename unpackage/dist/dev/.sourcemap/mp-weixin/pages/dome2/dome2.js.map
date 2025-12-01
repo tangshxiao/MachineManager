@@ -1,0 +1,1 @@
+{"version":3,"file":"dome2.js","sources":["../../../HBuilderX/HBuilderX/plugins/uniapp-cli-vite/uniPage:/cGFnZXMvZG9tZTIvZG9tZTIudnVl"],"sourcesContent":["import MiniProgramPage from 'D:/文档/HBuilderProjects/我的第一个uniapp/pages/dome2/dome2.vue'\nwx.createPage(MiniProgramPage)"],"names":[],"mappings":";;;;;;;AACA,GAAG,WAAW,eAAe;"}
