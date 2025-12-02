@@ -1,116 +1,81 @@
 
 .container {
-  padding: 30rpx;
-  background-color: #f8f8f8;
+  padding: 10rpx;
+  background-color: #F5F8FC;
   min-height: 100vh;
-  /* 添加底部内边距，为浮动按钮留出空间 */
   padding-bottom: 160rpx;
   box-sizing: border-box;
 }
-.header {
-  text-align: center;
-  margin-bottom: 40rpx;
-  padding: 30rpx 0;
-  background-color: #fff;
-  border-radius: 16rpx;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
-}
-.title {
-  font-size: 44rpx;
-  font-weight: bold;
-  color: #333;
-}
-
-/* 内容区域 */
 .content-area {
-  margin-bottom: 20rpx;
+  margin-bottom: 100rpx;
 }
 .project-list {
-  background-color: #fff;
-  border-radius: 16rpx;
-  overflow: hidden;
   box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
 }
 .project-item {
-  padding: 32rpx;
-  border-bottom: 2rpx solid #f0f0f0;
-}
-.project-item:last-child {
-  border-bottom: none;
+  padding: 5rpx;
+  background-color: #FFFFFF;
+  border-radius: 8rpx;
+  margin: 20rpx 0;
 }
 .radio-wrapper {
   display: flex;
   align-items: center;
-  margin-bottom: 16rpx;
-}
-.radio-wrapper radio {
-  margin-right: 24rpx;
+  justify-content: space-between;
+  margin-top: 11rpx;
+  margin-bottom: 10rpx;
 }
 .project-name {
   font-size: 36rpx;
   color: #333;
   font-weight: 500;
 }
-.project-description {
-  font-size: 28rpx;
-  color: #666;
-  margin-left: 68rpx;
-  display: block;
-  line-height: 1.5;
+
+/* 圆形多选框 */
+.circle-checkbox {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  border: 4rpx solid #D1D2D7;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* 空数据提示 */
-.empty-tip {
-  text-align: center;
-  padding: 100rpx 0;
-  color: #999;
+/* 选中时填充颜色 */
+.circle-checkbox.active {
+  background-color: #004CA2;
+  border-color: #004CA2;
+}
+
+/* 对勾样式 */
+.checkmark {
   font-size: 32rpx;
+  color: #FFFFFF;
+  font-weight: bold;
+  margin-top: -4rpx;
 }
-
-/* 浮动底部区域 */
 .floating-footer {
-  /* 固定定位，始终停留在页面底部 */
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  /* 内边距 */
   padding: 30rpx;
-  /* 背景颜色 */
-  background-color: #fff;
-  /* 阴影效果，增加层次感 */
+  background-color: #FFFFFF;
   box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.1);
-  /* 圆角，只在上方显示 */
   border-radius: 24rpx 24rpx 0 0;
-  /* 确保在内容上方 */
   z-index: 100;
 }
-
-/* 加载按钮样式 */
 .load-btn {
-  background-color: #007AFF;
+  background-color: #004CA2;
   color: white;
   border: none;
-  border-radius: 12rpx;
+  border-radius: 99pt;
   padding: 28rpx 0;
   font-size: 36rpx;
   margin-bottom: 20rpx;
-  /* 添加过渡效果 */
-  transition: all 0.3s;
 }
-
-/* 按钮悬停效果 */
-.load-btn:active {
-  background-color: #0056cc;
-  transform: scale(0.98);
-}
-.load-btn:disabled {
-  background-color: #ccc;
-  opacity: 0.7;
-  transform: none;
-}
-
-/* 按钮内容容器 */
 .btn-content {
   display: flex;
   align-items: center;
@@ -120,65 +85,4 @@
   color: white;
   font-size: 36rpx;
   margin-right: 10rpx;
-}
-
-/* 按钮图标 */
-.btn-icon {
-  color: white;
-  font-size: 36rpx;
-  font-weight: bold;
-}
-
-/* 已选项目信息 */
-.selected-info {
-  text-align: center;
-  padding: 20rpx;
-  background-color: #f8f8f8;
-  border-radius: 12rpx;
-}
-.selected-info text {
-  font-size: 32rpx;
-  color: #007AFF;
-  font-weight: 500;
-}
-
-/* 响应式调整 */
-@media (max-width: 750rpx) {
-.container {
-    padding: 20rpx;
-    padding-bottom: 160rpx;
-}
-.project-item {
-    padding: 24rpx;
-}
-.project-name {
-    font-size: 32rpx;
-}
-.project-description {
-    font-size: 26rpx;
-}
-.floating-footer {
-    padding: 20rpx;
-}
-.load-btn {
-    padding: 24rpx 0;
-    font-size: 32rpx;
-}
-.btn-text {
-    font-size: 32rpx;
-}
-.btn-icon {
-    font-size: 32rpx;
-}
-}
-
-/* 针对不同屏幕高度的适配 */
-@media (max-height: 600px) {
-  /* 在小高度屏幕上减少一些内边距 */
-.container {
-    padding-bottom: 140rpx;
-}
-.floating-footer {
-    padding: 20rpx;
-}
 }
