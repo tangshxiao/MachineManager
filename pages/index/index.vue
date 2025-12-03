@@ -66,6 +66,39 @@ export default {
         this.selected.push(id)
       }
     },
+<<<<<<< Updated upstream
+=======
+    
+    loadProjectData() {
+      // if (this.loading) return
+      
+      // this.loading = true
+      
+      // // 模拟加载数据
+      // setTimeout(() => {
+      //   uni.showToast({
+      //     title: '项目数据加载完成',
+      //     icon: 'success'
+      //   })
+        
+      //   this.loading = false
+      // }, 1500)
+	  // 调起条码扫描
+	  uni.scanCode({
+	  	scanType: ['barCode'],
+	  	success: function (res) {
+	  		console.log('条码类型：' + res.scanType);
+	  		console.log('条码内容：' + res.result);
+	  	}
+	  });
+    },
+    
+    // 获取选中的项目名称
+    getSelectedProjectName() {
+      const selected = this.projects.find(p => p.id === this.selectedProject)
+      return selected ? selected.name : ''
+    }
+>>>>>>> Stashed changes
   }
 }
 </script>
