@@ -1,6 +1,12 @@
 {
   "pages": [
-    "pages/index/index"
+    "pages/index/index",
+    "pages/test/scan",
+    "pages/home/MainActivity",
+    "pages/home/level/home/home",
+    "pages/home/level/UploadData",
+    "pages/home/level/Devices/Devices",
+    "pages/home/level/Mine"
   ],
   "window": {
     "navigationBarTextStyle": "black",

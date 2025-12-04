@@ -1,12 +1,12 @@
 {
 	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
 	
-	{
-		"path": "pages/index/index",
-		"style": {
-			"navigationBarTitleText": "选择项目"
-		}
-	},
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "选择项目"
+			}
+		},
 		{
 			"path": "pages/test/scan",
 			"style": {
@@ -20,7 +20,7 @@
 			}
 		},
 		
-		{
+		/*{
 		    "tabBar": {
 		        "custom": true,  // 启用自定义 Tabbar
 		        "list": [
@@ -42,11 +42,11 @@
 		            }
 		        ]
 		    }
-		},
+		},*/
 		{
 			"path": "pages/home/level/home/home",
 			"style": {
-				"navigationBarTitleText": ""
+				"navigationBarTitleText": "首页"
 			}
 		},
 		{
@@ -66,7 +66,7 @@
 			"style": {
 				"navigationBarTitleText": ""
 			}
-		}
+		},
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",

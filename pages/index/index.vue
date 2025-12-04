@@ -18,8 +18,8 @@
       </view>
     </view>
 
-    <view class="floating-footer">
-      <button class="load-btn">
+    <view @click="sweep" class="floating-footer">
+      <button  class="load-btn">
         <view class="btn-content">
           <text class="btn-text">加载项目数据</text>
         </view>
@@ -66,10 +66,17 @@ export default {
         this.selected.push(id)
       }
     },
-<<<<<<< Updated upstream
-=======
+	
+	sweep(){
+			uni.navigateTo({
+				url:'/pages/home/level/home/home'
+			})
+		}
+	
+//<<<<<<< Updated upstream
+//=======
     
-    loadProjectData() {
+   /* loadProjectData() {
       // if (this.loading) return
       
       // this.loading = true
@@ -98,7 +105,7 @@ export default {
       const selected = this.projects.find(p => p.id === this.selectedProject)
       return selected ? selected.name : ''
     }
->>>>>>> Stashed changes
+>>>>>>> Stashed changes*/
   }
 }
 </script>
