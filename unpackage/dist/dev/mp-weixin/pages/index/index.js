@@ -35,7 +35,7 @@ const _sfc_main = {
     },
     sweep() {
       common_vendor.index.navigateTo({
-        url: "/pages/test/scan"
+        url: "/pages/home/level/home/home"
       });
     }
     //<<<<<<< Updated upstream

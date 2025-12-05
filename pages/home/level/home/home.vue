@@ -7,15 +7,99 @@
 				</button>
 			</view>
 			<view class="user-card-Function">
-				<view class="user-card-Function-text">
+				<view class="user-card-Record-text">
+					<view class="user-card-Record-text-img">
+					</view>
 					功能菜单
 				</view>
+				<view class="user-card-Function-img">
+					<view class="user-card-Function-imga">
+						<image src="/imgs/shouyetu1.png" alt="" />
+						<view class="user-card-Function-text">
+							异常上报
+						</view>
+					</view>
+					<view class="user-card-Function-imga">
+						<image src="/imgs/shouyetu2.png" alt="" />
+						<view class="user-card-Function-text">
+							我的设备
+						</view>
+					</view>
+					<view class="user-card-Function-imga">
+						<image src="/imgs/shouyetu3.png" alt="" />
+						<view class="user-card-Function-text">
+							离线存储
+						</view>
+					</view>
+					<view class="user-card-Function-imga">
+						<image src="/imgs/shouyetu4.png" alt="" />
+						<view class="user-card-Function-text">
+							更多功能
+						</view>
+					</view>
+				</view>
 			</view>
-			<view class="">
-				最近打卡纪录
+			<view class="user-card-Record">
+				<view class="user-card-Record-text">
+					<view class="user-card-Record-text-img">
+					</view>
+					最近打卡纪录
+				</view>
+					
+					<view class="user-card-Record-Hide">
+					<view class="user-card-Record-Component">
+						<view class="user-card-Record-Component-text">
+							<view class="record-info">
+								<view>生成线设备</view>
+								<view>EQ-2025-001</view>
+							</view>
+						<button class="user-card-Record-Component-btn">进场</button>
+						</view>
+							<view class="record-time">
+							&#xe633;打卡时间2025-11-10 14:20
+								<view class="record-time-rigth">
+								&#xe847;工作A区
+								</view>
+							</view>
+					</view>
+					
+					<view class="user-card-Record-Component">
+						<view class="user-card-Record-Component-text">
+							<view class="record-info">
+								<view>生成线设备</view>
+								<view>EQ-2025-001</view>
+							</view>
+							<button class="user-card-Record-Component-btnt">退场</button>
+						</view>
+						<view class="record-time">
+								&#xe633;打卡时间2025-11-10 14:20
+							<view class="record-time-rigth">
+								&#xe847;工作A区
+							</view>
+						</view>
+					</view>
+					
+					<view class="user-card-Record-Component">
+						<view class="user-card-Record-Component-text">
+							<view class="record-info">
+								<view>生成线设备</view>
+								<view>EQ-2025-001</view>
+							</view>
+							<button class="user-card-Record-Component-btnt">退场</button>
+						</view>
+						<view class="record-time">
+							&#xe633;打卡时间2025-11-10 14:20
+							<view class="record-time-rigth">
+								&#xe847;工作A区
+							</view>
+						</view>
+					</view>
+				</view>	
 			</view>
-			<view class="">
-				常用设备
+			<view class="user-card-Equipment">
+				<view class="user-card-Equipment-text">
+					常用设备
+				</view>
 			</view>
 		</view>
 </template>
@@ -25,19 +109,21 @@
 
 <style>
 	.user-card{
-		padding: 10rpx;
+		padding: 15rpx;
 		background-color: #F5F8FC;
 		min-height: 100vh;
-		
+		display: flex;        /* 激活弹性布局 */
+		flex-direction: column;  /* 垂直排列 */
+		gap: 20rpx;    
+		font-family: "iconfont";
 	}
 	
-	@font-face {
-	  font-family: 'iconfont';  /* Project id 5080572 */
-	  src: url('//at.alicdn.com/t/c/font_5080572_4c1ie2j8r3q.woff2?t=1764817678307') format('woff2'),
-	       url('//at.alicdn.com/t/c/font_5080572_4c1ie2j8r3q.woff?t=1764817678307') format('woff'),
-	       url('//at.alicdn.com/t/c/font_5080572_4c1ie2j8r3q.ttf?t=1764817678307') format('truetype');
-	}
-	
+@font-face {
+  font-family: 'iconfont';  /* Project id 5080572 */
+  src: url('//at.alicdn.com/t/c/font_5080572_5f7m0a6dndt.woff2?t=1764933184683') format('woff2'),
+       url('//at.alicdn.com/t/c/font_5080572_5f7m0a6dndt.woff?t=1764933184683') format('woff'),
+       url('//at.alicdn.com/t/c/font_5080572_5f7m0a6dndt.ttf?t=1764933184683') format('truetype');
+}
 	.user-card-btn{
 		background-color: #004ca2;
 		width: 640rpx;
@@ -46,16 +132,144 @@
 		border-radius: 198rpx;
 		color: white;
 		font-size: 30rpx; 
-		font-family: "iconfont";
 	}
 
 	.user-card-Function{
 		height: 266rpx;
-		background-color: #aa5500;
+		background-color: #FFFFFF;
 		border-radius: 16rpx;
-	}
-	.user-card-Function-text{
-		padding-left: 48rpx;
+		padding-left: 24rpx;
+		padding-right: 24rpx;
 		padding-top: 28rpx;
+		 box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
 	}
+	
+	.user-card-Function-img{
+		display: flex;
+		flex-direction: row;
+		gap: 74rpx;
+		justify-content: center;
+	}
+	
+	.user-card-Function-imga{
+		 width: 120rpx;          /* 功能块总宽 */
+		  display: flex;
+		  flex-direction: column; /* 图片在上，文字在下 */
+		  align-items: center;  
+	}
+	
+	.user-card-Function-imga image{
+		width: 80rpx;
+		height: 80rpx;
+		margin-bottom: 10rpx; 
+	}
+	
+	.user-card-Function-text{
+		width: 120rpx;
+		font-size: 30rpx;
+		color: #1A1A1A ;
+		text-align: center;
+	}
+	
+	.user-card-Record{
+		height: 552rpx;
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding-left: 24rpx;
+		padding-right: 24rpx;
+		padding-top: 28rpx;
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+	}
+	
+	.user-card-Record-Hide{
+		border-radius: 16rpx;
+		height: 450rpx;
+		overflow: scroll;
+	}
+	
+	.record-info {
+		display: flex;
+		flex-direction: column;
+		gap: 6rpx;
+	}
+	
+	.record-time {
+		margin-top: 20rpx;
+		color: #666;
+		font-size: 26rpx;
+		display: flex;
+		justify-content: space-between;
+	}
+	
+	.user-card-Record-text{
+			display: flex;
+		   font-family: 'PingFang SC', 'Helvetica Neue', 'Arial', sans-serif; /* 没有 PingFang 就用备选 */
+		   font-weight: 600;  /* semibold */
+		   font-size: 32rpx;
+		   line-height: 44rpx;
+		   color: #1A1A1A;
+		   margin-bottom: 28rpx;
+	}
+	
+	.user-card-Record-text-img{
+		position: relative;
+		top: 2px;
+		margin-right: 24rpx;
+		width: 8rpx;
+		height: 32rpx;
+		border-radius: 0rpx 10rpx 10rpx 0rpx;
+		background-color:#4E83BE ;
+	}
+	
+	.user-card-Record-Component{
+		padding: 24rpx;
+		display: flex; 
+		background-color:#F5F8FC;
+		flex-direction: column;
+		border-radius: 16rpx;
+		margin-bottom: 20rpx;
+	}
+	
+	.user-card-Record-Component-text{
+		display: flex;
+		justify-content: space-between;
+		align-items: center; 
+		margin-bottom: 10rpx;
+	}
+	
+	
+	.user-card-Record-Component-btn{
+		margin-right: 5rpx; 
+		background-color: #3AA7F9;
+		width: 120rpx;
+		height: 60rpx;
+		line-height: 60rpx;
+		border-radius: 176rpx;
+		font-size: 28rpx; 
+		color: white;
+	}
+	
+	.user-card-Record-Component-btnt{
+		margin-right: 5rpx; 
+		background-color: #A4B6D3;
+		width: 120rpx;
+		height: 60rpx;
+		line-height: 60rpx;
+		border-radius: 176rpx;
+		font-size: 28rpx; 
+		color: white;
+	}
+	
+	
+	.user-card-Equipment{
+		height: 760rpx;
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+	}
+	
+	.user-card-Equipment-text{
+		
+	}
+	
 </style>

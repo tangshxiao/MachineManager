@@ -18,8 +18,8 @@
       </view>
     </view>
 
-    <view @click="sweep" class="floating-footer">
-      <button  class="load-btn">
+    <view  class="floating-footer">
+      <button @click="sweep" class="load-btn">
         <view class="btn-content">
           <text class="btn-text">加载项目数据</text>
         </view>
