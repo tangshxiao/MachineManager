@@ -98,8 +98,55 @@
 			</view>
 			<view class="user-card-Equipment">
 				<view class="user-card-Equipment-text">
+					<view class="user-card-Record-text-img">
+					</view>
 					常用设备
 				</view>
+				
+				<view class="user-card-Equipment-Hide">
+					<view class="user-card-Equipment-Component1">
+						<view class="user-card-Equipment-Component-text">
+							<view class="record-info">
+								<view>EQ-2025-001挖掘机</view>
+							</view>
+						<button class="user-card-Equipment-Component-btn1">正常</button>
+						</view>
+							<view class="record-time">
+							&#xe633;最后打卡时间2025-11-10 14:20
+								<view class="record-time-rigth">
+								</view>
+							</view>
+					</view>
+					
+					<view class="user-card-Equipment-Component2">
+						<view class="user-card-Equipment-Component-text">
+							<view class="record-info">
+								<view>EQ-2025-001</view>
+							</view>
+							<button class="user-card-Record-Component-btnt2">警告</button>
+						</view>
+						<view class="record-time">
+								&#xe633;最后打卡时间2025-11-10 14:20
+							<view class="record-time-rigth">
+							</view>
+						</view>
+					</view>
+					
+					<view class="user-card-Equipment-Component3">
+						<view class="user-card-Equipment-Component-text">
+							<view class="record-info">
+								<view>EQ-2025-001</view>
+							</view>
+							<button class="user-card-Record-Component-btnt3">故障</button>
+						</view>
+						<view class="record-time">
+							&#xe633;最后打卡时间2025-11-10 14:20
+							<view class="record-time-rigth">
+
+							</view>
+						</view>
+					</view>
+				</view>	
 			</view>
 		</view>
 </template>
@@ -262,14 +309,95 @@
 	
 	
 	.user-card-Equipment{
-		height: 760rpx;
 		background-color: #FFFFFF;
 		border-radius: 16rpx;
-		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+		padding-left: 24rpx;
+		padding-right: 24rpx;
+		padding-top: 28rpx;
+		 box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
 	}
 	
 	.user-card-Equipment-text{
-		
+		display: flex;
+		font-family: 'PingFang SC', 'Helvetica Neue', 'Arial', sans-serif; /* 没有 PingFang 就用备选 */
+		font-weight: 600;  /* semibold */
+		font-size: 32rpx;
+		line-height: 44rpx;
+		color: #1A1A1A;
+		margin-bottom: 28rpx;
+	}
+	
+	
+	.user-card-Equipment-Component-text{
+		display: flex;
+		justify-content: space-between;
+		align-items: center; 
+		margin-bottom: 10rpx;
+	}
+	
+	.user-card-Equipment-Component1{
+		padding: 24rpx;
+		display: flex; 
+		background-color:#ECFAF3;
+		flex-direction: column;
+		border-radius: 16rpx;
+		margin-bottom: 20rpx;
+	}
+	
+	.user-card-Equipment-Component2{
+		padding: 24rpx;
+		display: flex; 
+		background-color:#FFF8F0;
+		flex-direction: column;
+		border-radius: 16rpx;
+		margin-bottom: 20rpx;
+	}
+	
+	.user-card-Equipment-Component3{
+		padding: 24rpx;
+		display: flex; 
+		background-color:#FFF2F0;
+		flex-direction: column;
+		border-radius: 16rpx;
+		margin-bottom: 20rpx;
+	}
+	
+	.user-card-Equipment-Component-btn1{
+		margin-right: 5rpx;
+		background-color: #39CCA6;
+		width: 120rpx;
+		height: 60rpx;
+		line-height: 60rpx;
+		border-radius: 176rpx;
+		font-size: 28rpx; 
+		color: white;
+	}
+	.user-card-Record-Component-btnt2{
+		margin-right: 5rpx;
+		background-color: #FFB647;
+		width: 120rpx;
+		height: 60rpx;
+		line-height: 60rpx;
+		border-radius: 176rpx;
+		font-size: 28rpx; 
+		color: white;
+	}
+	.user-card-Record-Component-btnt3{
+		margin-right: 5rpx;
+		background-color: #E55762;
+		width: 120rpx;
+		height: 60rpx;
+		line-height: 60rpx;
+		border-radius: 176rpx;
+		font-size: 28rpx; 
+		color: white;
+	}
+	
+	.user-card-Equipment-Component-text{
+		display: flex;
+		justify-content: space-between;
+		align-items: center; 
+		margin-bottom: 5rpx;
 	}
 	
 </style>
