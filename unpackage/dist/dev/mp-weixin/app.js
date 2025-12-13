@@ -9,6 +9,7 @@ if (!Math) {
   "./pages/home/level/UploadData.js";
   "./pages/home/level/Devices/Devices.js";
   "./pages/home/level/Mine.js";
+  "./pages/home/level/Abnormal.js";
 }
 const _sfc_main = {
   onLaunch: function() {
