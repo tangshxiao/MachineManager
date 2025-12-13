@@ -13,7 +13,7 @@
 					功能菜单
 				</view>
 				<view class="user-card-Function-img">
-					<view class="user-card-Function-imga">
+					<view class="user-card-Function-imga" @click="yichang">
 						<image src="/imgs/shouyetu1.png" alt="" />
 						<view class="user-card-Function-text">
 							异常上报
@@ -153,16 +153,33 @@
 
 <script>
 export default {
-		data() {
-	    return {
-			daka(){
-				uni.navigateTo({
-					url:'/pages/home/level/UploadData'
-						})
-					}
-				}
-			}
-		}
+  data() {
+    return {
+      // 这里放数据
+      shebei: '',
+      shengchan: '',
+      message: '',
+      enterTime: '',
+      person: ''
+    }
+  },
+  methods: {
+    // 点击“打卡”跳转页面
+    daka() {
+      uni.navigateTo({
+        url: '/pages/home/level/UploadData'
+      });
+    },
+
+    // 异常跳转页面
+    yichang() {
+      uni.navigateTo({
+        url: '/pages/home/level/Abnormal'
+      });
+    }
+  }
+}
+		
 </script>
 	
 <style>

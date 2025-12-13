@@ -6,7 +6,8 @@
     "pages/home/level/home/home",
     "pages/home/level/UploadData",
     "pages/home/level/Devices/Devices",
-    "pages/home/level/Mine"
+    "pages/home/level/Mine",
+    "pages/home/level/Abnormal"
   ],
   "window": {
     "navigationBarTextStyle": "black",

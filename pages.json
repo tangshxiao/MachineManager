@@ -66,6 +66,12 @@
 			"style": {
 				"navigationBarTitleText": ""
 			}
+		},
+		{
+			"path": "pages/home/level/Abnormal",
+			"style": {
+				"navigationBarTitleText": "异常上报"
+			}
 		}
 	],
 	"globalStyle": {
