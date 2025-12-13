@@ -1,4 +1,7 @@
 <template>
+
+ <view class="page">
+
   <view class="mine-container">
     <!-- Header -->
     <view class="header">
@@ -39,10 +42,21 @@
       <text>退出登录</text>
     </view>
   </view>
+
+   <!-- 自定义 tabbar 固定在底部 -->
+    	<custom-tab-bar />
+
+  </view>
 </template>
 
 <script>
+
+  import CustomTabBar from '@/components/custom-tab-bar.vue'
+
 export default {
+   components: {
+      CustomTabBar
+    },
   methods: {
     navigateTo(page) {
       // 这里添加页面跳转逻辑

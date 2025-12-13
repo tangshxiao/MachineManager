@@ -1,4 +1,5 @@
 <template>
+	 <view class="page">
 		<view class="user-card">
 			<view class="user-card-button">
 				<button class="user-card-btn"@click="daka">
@@ -149,9 +150,15 @@
 				</view>	
 			</view>
 		</view>
+	   <!-- 自定义 tabbar 固定在底部 -->
+    	<custom-tab-bar />
+	</view>
 </template>
 
 <script>
+	import CustomTabBar from '@/components/custom-tab-bar.vue'
+
+
 export default {
 
 		//data() {
@@ -173,7 +180,9 @@ export default {
 		//	}
 			
 		//}
-
+ components: {
+    CustomTabBar
+  },
   data() {
     return {
       // 这里放数据

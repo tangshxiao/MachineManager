@@ -69,16 +69,21 @@ export default {
 
 	
 	sweep(){
-		uni.switchTab({
-			url: '/pages/home/level/home/home',
-			fail: (err) => {
-				console.error('跳转失败:', err);
-				uni.showToast({
-					title: '跳转失败',
-					icon: 'none'
-				});
-			}
+		// uni.switchTab({
+		// 	url: '/pages/home/level/home/home',
+		// 	fail: (err) => {
+		// 		console.error('跳转失败:', err);
+		// 		uni.showToast({
+		// 			title: '跳转失败',
+		// 			icon: 'none'
+		// 		});
+		// 	}
+		// });
+		
+		uni.navigateTo({
+			url:'/pages/home/level/home/home',
 		});
+		
 	},
 
     
