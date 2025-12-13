@@ -161,7 +161,16 @@ export default {
 						})
 					}
 				}
+			},
+			
+			mounted() {
+			  // 设置排行榜页面的徽标
+			  uni.setTabBarBadge({
+			    index:1, // 页面下标
+			    text: '12', // text 的值必须是字符串
+			  })
 			}
+			
 		}
 </script>
 	

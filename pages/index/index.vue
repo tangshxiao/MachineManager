@@ -66,15 +66,21 @@ export default {
         this.selected.push(id)
       }
     },
+
 	
 	sweep(){
-			uni.navigateTo({
-				url:'/pages/home/level/home/home'
-			})
-		}
-	
-//<<<<<<< Updated upstream
-//=======
+		uni.switchTab({
+			url: '/pages/home/level/home/home',
+			fail: (err) => {
+				console.error('跳转失败:', err);
+				uni.showToast({
+					title: '跳转失败',
+					icon: 'none'
+				});
+			}
+		});
+	},
+
     
    /* loadProjectData() {
       // if (this.loading) return
@@ -98,14 +104,13 @@ export default {
 	  		console.log('条码内容：' + res.result);
 	  	}
 	  });
-    },
+    },*/
     
     // 获取选中的项目名称
     getSelectedProjectName() {
       const selected = this.projects.find(p => p.id === this.selectedProject)
       return selected ? selected.name : ''
     }
->>>>>>> Stashed changes*/
   }
 }
 </script>
