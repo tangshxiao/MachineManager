@@ -52,7 +52,7 @@
 		{
 			"path": "pages/home/level/UploadData",
 			"style": {
-				"navigationBarTitleText": ""
+				"navigationBarTitleText": "扫码"
 			}
 		},
 		{
@@ -73,6 +73,9 @@
 		"navigationBarTitleText": "uni-app",
 		"navigationBarBackgroundColor": "#F8F8F8",
 		"backgroundColor": "#F8F8F8"
+	},
+	"mp-weixin":{
+		"appid":"wxd5dfdf6fd6c6c279"
 	},
 	"uniIdRouter": {}
 }

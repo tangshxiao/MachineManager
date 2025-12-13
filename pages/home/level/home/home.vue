@@ -1,8 +1,8 @@
 <template>
 		<view class="user-card">
 			<view class="user-card-button">
-				<button class="user-card-btn">
-					<text class="iconfont">&#xe600;</text>
+				<button class="user-card-btn"@click="daka">
+					<text class="iconfont" >&#xe600;</text>
 					扫码打卡
 				</button>
 			</view>
@@ -152,8 +152,19 @@
 </template>
 
 <script>
+export default {
+		data() {
+	    return {
+			daka(){
+				uni.navigateTo({
+					url:'/pages/home/level/UploadData'
+						})
+					}
+				}
+			}
+		}
 </script>
-
+	
 <style>
 	.user-card{
 		padding: 15rpx;
