@@ -22,7 +22,7 @@
 					</view>
 					<view class="user-card-Function-imga">
 						<image src="/imgs/shouyetu2.png" alt="" />
-						<view class="user-card-Function-text">
+						<view class="user-card-Function-text" @click="devices">
 							我的设备
 						</view>
 					</view>
@@ -206,7 +206,13 @@ export default {
       uni.navigateTo({
         url: '/pages/home/level/Abnormal'
       });
-    }
+    },
+	
+	devices() {
+	  uni.navigateTo({
+	    url: '/pages/home/level/Devices/Devices'
+	  });
+	}
   }
 }
 
