@@ -10,7 +10,7 @@
 				</view>
 			</view>
 			<view class="Head-right">
-				<img src="/imgs/image@2x.png" alt="" />
+				<img src="/static/image@2x.png" alt="" />
 			</view>
 		</view>
 	
@@ -137,7 +137,7 @@
 	.Content{
 		display: flex;
 		flex-direction: column;
-		ustify-content: space-between; 
+		justify-content: space-between; 
 		padding-top: 50rpx;
 		padding-left: 30rpx;
 		padding-bottom: 50rpx;

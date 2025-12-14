@@ -33,51 +33,55 @@ export default {
         {
           pagePath: "/pages/home/level/home/home",
           text: "首页",
-          iconPath: "/imgs/icon_home_def.png",
-          selectedIconPath: "/imgs/icon_home_sel.png"
+          iconPath: "/static/icon_home_def.png",
+          selectedIconPath: "/static/icon_home_sel.png"
         },
         {
           pagePath: "/pages/home/level/home",
           text: "上报",
-          iconPath: "/imgs/icon_upload_def.png",
-          selectedIconPath: "/imgs/icon_upload_sel.png"
+          iconPath: "/static/icon_upload_def.png",
+          selectedIconPath: "/static/icon_upload_sel.png"
         },
         {
           pagePath: "/pages/home/level/UploadData",
           text: "",
-          iconPath: "/imgs/icon_home_scan.png",
-          selectedIconPath: "/imgs/icon_home_scan.png"
+          iconPath: "/static/icon_home_scan.png",
+          selectedIconPath: "/static/icon_home_scan.png"
         },
         {
           pagePath: "/pages/home/level/Devices/Devices",
           text: "设备",
-          iconPath: "/imgs/icon_device_def.png",
-          selectedIconPath: "/imgs/icon_device_sel.png"
+          iconPath: "/static/icon_device_def.png",
+          selectedIconPath: "/static/icon_device_sel.png"
         },
         {
           pagePath: "/pages/home/level/Mine",
           text: "我的",
-          iconPath: "/imgs/icon_mine_def.png",
-          selectedIconPath: "/imgs/icon_mine_sel.png"
+          iconPath: "/static/icon_mine_def.png",
+          selectedIconPath: "/static/icon_mine_sel.png"
         }
       ]
     };
   },
   created() {
-    const pages = getCurrentPages();
-    const currentPage = pages[pages.length - 1].route;
-    this.current = this.list.findIndex(item => item.pagePath.includes(currentPage));
+    this.updateCurrentPage();
+  },
+  mounted() {
+    this.updateCurrentPage();
   },
   methods: {
+    updateCurrentPage() {
+      const pages = getCurrentPages();
+      if (pages && pages.length > 0) {
+        const currentPage = pages[pages.length - 1].route;
+        this.current = this.list.findIndex(item => item.pagePath.includes(currentPage));
+        if (this.current === -1) this.current = 0;
+      }
+    },
     switchTab(index, url) {
       if (this.current === index) return;
       this.current = index;
-      uni.navigateTo({
-        url: url,
-        fail: (err) => {
-          console.error('切换失败:', err);
-        }
-      });
+      this.$emit('tab-change', index);
     }
   }
 };

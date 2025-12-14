@@ -81,7 +81,7 @@ export default {
 		// });
 		
 		uni.navigateTo({
-			url:'/pages/home/level/home/home',
+			url:'/pages/home/level/MainContainer',
 		});
 		
 	},

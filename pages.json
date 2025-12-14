@@ -1,5 +1,5 @@
 {
-	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
+	"pages": [ 
 	
 	 {
 	 	"path": "pages/index/index",
@@ -21,6 +21,12 @@
 			}
 		},
 
+		{
+			"path": "pages/home/level/MainContainer",
+			"style": {
+				"navigationBarTitleText": "机具管理"
+			}
+		},
 		{
 			"path": "pages/home/level/home/home",
 			"style": {
@@ -59,48 +65,6 @@
 		"navigationBarBackgroundColor": "#004CA2",
 		"backgroundColor": "#004CA2"
 	},
-	// "tabBar": {
-	// 	"custom": true,  // 启用自定义 Tabbar
-	// 	"color": "#555555", // 文字颜色
-	// 	"selectedColor": "#FF5050", // 选中文字颜色
-	// 	"borderStyle": "white", // 上边框颜色 white 白色
-	// 	"backgroundColor": "#FFFFFF", // 背景颜色
-	// 	"list": [
-	// 		{
-	// 			"pagePath": "pages/home/level/home/home",
-	// 			"text": "首页",
-	// 			"iconPath": "/imgs/icon_home_def.png", // 默认图片
-	// 			"selectedIconPath": "/imgs/icon_home_sel.png" // 选中图片
-	// 		},
-	// 		{
-	// 		   "pagePath": "pages/home/level/home",
-	// 			"text": "上报",
-	// 			"iconPath": "/imgs/icon_upload_def.png", // 默认图片
-	// 			"selectedIconPath": "/imgs/icon_upload_sel.png" // 选中图片
-	// 		},
-			
-	// 		{
-	// 			"text": "",
-	// 			"iconPath": "/imgs/icon_home_scan.png", // 默认图片
-	// 			"selectedIconPath": "/imgs/icon_home_scan.png" // 选中图片
-	// 		},
-			
-	// 		{
-	// 			"pagePath": "pages/home/level/home",
-	// 			"text": "设备",
-	// 			"iconPath": "/imgs/icon_device_def.png", // 默认图片
-	// 			"selectedIconPath": "/imgs/icon_device_sel.png" // 选中图片
-	// 		},
-	// 		{
-	// 			"pagePath": "pages/home/level/Mine",
-	// 			"text": "我的",
-	// 			"iconPath": "/imgs/icon_mine_def.png", // 默认图片
-	// 			"selectedIconPath": "/imgs/icon_mine_se.png" // 选中图片
-	// 		}
-	// 	]
-	// },
-	
-	
 	"mp-weixin":{
 		"appid":"wxd5dfdf6fd6c6c279"
 	},
