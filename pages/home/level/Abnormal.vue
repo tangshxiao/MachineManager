@@ -264,15 +264,16 @@ export default {
 			border-radius:16rpx;
 		}
 		.box2-input{
-			 position: absolute;
+			 position: relative;
 			  top: 20rpx;
 			  left: 20rpx;
-			  width: 638rpx;
+			  width: 90%;
 			  height: 170rpx;
 			  padding: 10rpx 0 0 10rpx; 
 			  padding: rpx;
 			  background-color: #F5F9FC;
 			  border-radius:16rpx;
+			  
 		}
 		.box2-count{
 			position: absolute;

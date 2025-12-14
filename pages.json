@@ -42,7 +42,7 @@
 		{
 			"path": "pages/home/level/Devices/Devices",
 			"style": {
-				"navigationBarTitleText": ""
+				"navigationBarTitleText": "我的设备"
 			}
 		},
 		{
