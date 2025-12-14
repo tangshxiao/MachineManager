@@ -47,9 +47,9 @@
 						&#xe633;最后打卡时间:{{ finallys[0].date }}{{ finallys[0].time }}
 					</view>
 			   </view>
-		   <view :class="['status-tag', item.statuss]">
-				{{ item.statuss === 'normal'?'正常': item.statuss==='warning'?'警告':'故障'}}
-		   </view>
+			   <view :class="['status-tag', item.statuss]">
+					{{ item.statuss === 'normal'?'正常': item.statuss==='warning'?'警告':'故障'}}
+			   </view>
 	   </view>
       </view>
       <view v-if="filteredList.length === 0" class="empty">
@@ -124,11 +124,13 @@ page {
 }
 
 .search-box {
+	display: flex;
+	justify-content: space-between;
   margin-bottom: 20rpx;
   background-color: #ffffff; 
   display: flex;
   align-items: center;
-  padding: 20rpx 0rpx 20rpx 30rpx;
+  padding: 20rpx 30rpx 20rpx 30rpx;
 }
 .search-box input {
   width: 460rpx;
@@ -199,15 +201,15 @@ page {
   margin-top: 50rpx;
 }
 .device-item-box{
+	width: 100%;
 	display: flex;
 	  justify-content: center; 
 	  align-items: center;    
 	  justify-content: space-between;
-	  position: relative;
+	  padding: 0 34rpx;
 }
 
 .status-tag{
-	position: absolute;
 	width: 120rpx;
 	height: 60rpx;
 	border-radius: 50px;
@@ -215,7 +217,6 @@ page {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	left: 130%
 }
 .status-tag.normal{
 	background-color: #39CCA6;
