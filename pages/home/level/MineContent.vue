@@ -8,7 +8,7 @@
 
     <!-- User Info Card -->
     <view class="user-card">
-      <!-- <view class="user-avatar">
+      <view class="user-avatar">
         <image src="/static/avatar-placeholder.png" mode="aspectFill"></image>
       </view>
       <view class="user-info">
@@ -16,19 +16,24 @@
         <view class="user-id">ID:USER0000001</view>
         <view class="user-role">角色: 操作员</view>
       </view>
-      <button class="edit-btn">修改资料</button> -->
+      <button class="edit-btn">修改资料</button>
     </view>
 
     <!-- Menu Items -->
-    <view class="menu-list">
-      <view class="menu-item" @click="navigateTo('offline')">
+    <view class="menu-item" @click="navigateTo('offline')" style="margin-top: 70rpx;">
+      <view class="menu-left">
+        <image src="/static/icon_lx_leftimg.png" mode="aspectFill" class="menu-icon"></image>
         <text class="menu-text">离线缓存记录</text>
-        <text class="iconfont arrow">&#xe65e;</text>
       </view>
-      <view class="menu-item" @click="navigateTo('records')">
+      <image src="/static/icon_right_jt.png" mode="aspectFill" class="arrow-icon"></image>
+    </view>
+    
+    <view class="menu-item" @click="navigateTo('records')">
+      <view class="menu-left">
+        <image src="/static/icon_dk_leftimg.png" mode="aspectFill" class="menu-icon"></image>
         <text class="menu-text">所有打卡数据</text>
-        <text class="iconfont arrow">&#xe65e;</text>
       </view>
+      <image src="/static/icon_right_jt.png" mode="aspectFill" class="arrow-icon"></image>
     </view>
 
     <!-- Logout Button -->
@@ -62,9 +67,14 @@ export default {
 <style>
 .mine-container {
   padding: 30rpx;
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
   box-sizing: border-box;
-  background-color: #f5f7fa;
+  background: linear-gradient(to bottom, #e8f4fd, #ffffff);
+  position: relative;
+  overflow: hidden;
+  touch-action: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Header Styles */
@@ -72,7 +82,7 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20rpx 30rpx;
+  padding: 80rpx 30rpx;
   margin-bottom: 30rpx;
   background: transparent;
   position: relative;
@@ -102,27 +112,26 @@ export default {
 
 /* User Card Styles */
 .user-card {
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 20rpx;
+  background: transparent;
+  padding: 15rpx;
   margin-bottom: 30rpx;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
-  max-height: 120rpx;
-  height: 120rpx;
-  box-sizing: border-box;
-  overflow: hidden;
+  position: relative;
+  height: 100rpx !important;
+  max-height: 100rpx !important;
+  min-height: 100rpx !important;
+  overflow: visible;
 }
 
 .user-avatar {
-  width: 80rpx;
-  height: 80rpx;
+  width: 120rpx;
+  height: 120rpx;
   border-radius: 50%;
   overflow: hidden;
-  margin-right: 16rpx;
   background-color: #f0f2f5;
+  position: absolute;
+  left: 15rpx;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .user-avatar image {
@@ -131,77 +140,102 @@ export default {
 }
 
 .user-info {
-  flex: 1;
+  position: absolute;
+  left: 159rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  right: 200rpx;
+  z-index: 1;
 }
 
 .user-name {
   font-size: 36rpx;
   font-weight: 600;
-  color: #333;
-  margin-bottom: 10rpx;
+  color: #1A1A1A;
+  margin-bottom: 4rpx;
+  line-height: 1.2;
 }
 
 .user-id,
 .user-role {
-  font-size: 24rpx;
-  color: #999;
-  line-height: 1.5;
+  font-size: 26rpx;
+  color: #8A8E9A;
+  line-height: 1.2;
 }
 
 .edit-btn {
-  font-size: 24rpx;
-  color: #666;
-  background: #f8f9fa;
-  border: 1rpx solid #e9ecef;
-  border-radius: 25rpx;
-  padding: 8rpx 16rpx;
+  font-size: 28rpx;
+  color: #FFFFFF;
+  background: #004CA2;
+  border: none;
+  border-radius: 176rpx;
+  width: 152rpx;
+  height: 60rpx;
   margin: 0;
-  line-height: 1.4;
+  line-height: 60rpx;
+  text-align: center;
   white-space: nowrap;
+  position: absolute;
+  right: 15rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* Menu List Styles */
-.menu-list {
+/* Menu Items */
+.menu-item {
   background: #fff;
   border-radius: 16rpx;
-  overflow: hidden;
-  margin-bottom: 30rpx;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
-}
-
-.menu-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 30rpx 30rpx;
-  border-bottom: 1rpx solid #f8f9fa;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
+  height: 90rpx;
+  box-sizing: border-box;
 }
 
-.menu-item:last-child {
-  border-bottom: none;
+.menu-left {
+  display: flex;
+  align-items: center;
+}
+
+.menu-icon {
+  width: 32rpx;
+  height: 32rpx;
+  margin-right: 20rpx;
 }
 
 .menu-text {
   font-size: 30rpx;
-  color: #333;
+  color: #1A1A1A;
+  font-weight: 400;
 }
 
-.arrow {
-  color: #999;
-  font-size: 28rpx;
+.arrow-icon {
+  width: 28rpx;
+  height: 28rpx;
 }
 
 /* Logout Button */
 .logout-btn {
-  background: #fff;
-  color: #ff4757;
+  background: #ffffff;
+  color: #8A8E9A;
   font-size: 32rpx;
   font-weight: 500;
   text-align: center;
   padding: 30rpx 0;
-  border-radius: 16rpx;
-  margin-top: 40rpx;
+  border-radius: 198rpx;
   box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
+  border: none;
+  position: absolute;
+  bottom: 110rpx;
+  left: 30rpx;
+  right: 30rpx;
 }
 
 /* Icon Font */

@@ -13,8 +13,7 @@
       </view>
       
       <!-- Scan Page -->
-      <view v-if="currentTab === 2" class="page-content">
-        <ScanContent />
+      <view v-if="currentTab === 2" class="page-content scan-page">
       </view>
       
       <!-- Devices Page -->
@@ -62,6 +61,29 @@ export default {
     handleTabChange(index) {
       console.log('Tab changed to:', index);
       this.currentTab = index;
+      
+      // 当切换到扫码页面时，直接触发扫码
+      if (index === 2) {
+        uni.scanCode({
+          scanType: ['barCode', 'qrCode'],
+          success: function (res) {
+            console.log('条码类型：' + res.scanType);
+            console.log('条码内容：' + res.result);
+            uni.showToast({
+              title: '扫码成功：' + res.result,
+              icon: 'success'
+            });
+          },
+          fail: (err) => {
+            console.error('扫码失败:', err);
+            uni.showToast({
+              title: '扫码失败',
+              icon: 'none'
+            });
+            this.currentTab = 0; // 回到首页
+          }
+        });
+      }
     }
   }
 }
@@ -83,5 +105,9 @@ export default {
 .page-content {
   height: 100%;
   overflow-y: auto;
+}
+
+.scan-page {
+  background: transparent;
 }
 </style>

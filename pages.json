@@ -24,7 +24,8 @@
 		{
 			"path": "pages/home/level/MainContainer",
 			"style": {
-				"navigationBarTitleText": "机具管理"
+				"navigationBarTitleText": "机具管理",
+				"navigationStyle": "custom"
 			}
 		},
 		{

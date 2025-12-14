@@ -19,7 +19,7 @@
       </view>
       <view class="user-info">
         <view class="user-name">老周</view>
-        <view class="user-id">ID:USER0000001</view>
+        <view class="user-id" style="margin-top: 10rpx;">ID:USER0000001</view>
         <view class="user-role">角色: 操作员</view>
       </view>
       <button class="edit-btn">修改资料</button>

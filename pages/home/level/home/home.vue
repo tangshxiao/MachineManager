@@ -1,9 +1,11 @@
 <template>
 	 <view class="page">
-		<view class="user-card">
+
+		<view class="status-bar" style="height:80px;background:#004CA2;display:block;"></view>
+		<view class="user-card" style="margin-top: 80px;">
 			<view class="user-card-button">
-				<button class="user-card-btn"@click="daka">
-					<text class="iconfont" >&#xe600;</text>
+				<button class="user-card-btn"@click="daka" style="display:flex;align-items:center;justify-content:center;">
+					<image src="/static/icon_scan_img.png" mode="aspectFill" style="width:40rpx;height:40rpx;margin-right:10rpx;"></image>
 					扫码打卡
 				</button>
 			</view>
@@ -160,26 +162,7 @@
 
 
 export default {
-
-		//data() {
-	   // return {
-		//	daka(){
-		//		uni.navigateTo({
-		//			url:'/pages/home/level/UploadData'
-		//				})
-		//			}
-		//		}
-		//	},
-			
-		//	mounted() {
-		//	  // 设置排行榜页面的徽标
-		//	  uni.setTabBarBadge({
-		//	    index:1, // 页面下标
-		//	    text: '12', // text 的值必须是字符串
-		//	  })
-		//	}
-			
-		//}
+ 
  components: {
     CustomTabBar
   },
@@ -193,6 +176,7 @@ export default {
       person: ''
     }
   },
+ 
   methods: {
     // 点击“打卡”跳转页面
     daka() {
@@ -457,11 +441,22 @@ export default {
 		color: white;
 	}
 	
-	.user-card-Equipment-Component-text{
-		display: flex;
-		justify-content: space-between;
-		align-items: center; 
-		margin-bottom: 5rpx;
+	.page {
+		background: linear-gradient(to bottom, #4E83BE, #ffffff);
+		min-height: 100vh;
+		box-sizing: border-box;
+		padding-top: 44px;
+		padding-top: env(safe-area-inset-top);
 	}
 	
+	.status-bar {
+		height: 80px;
+		height: env(safe-area-inset-top);
+		width: 100%;
+		background: #004CA2;
+		position: fixed;
+		top: 0;
+		left: 0;
+		z-index: 999;
+	}
 </style>

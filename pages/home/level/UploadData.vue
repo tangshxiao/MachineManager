@@ -79,10 +79,7 @@
 			person:"老周"
 	    }
 	  },
-	   // 页面加载触发（只执行一次）
-	   onLoad() {
-	      this.getEnterTime()
-	    },
+	  
 	 methods: {
 		  // 获取当前时间并格式化
 	     getEnterTime() {
