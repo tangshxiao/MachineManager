@@ -37,7 +37,7 @@ import CustomTabBar from '@/components/custom-tab-bar.vue'
 import HomeContent from './home/home.vue'
 import ReportContent from './Report.vue'
 import ScanContent from './UploadData.vue'
-import DevicesContent from './Devices/Devices.vue'
+import DevicesContent from './DevicesMang.vue'
 import MineContent from './MineContent.vue'
 
 export default {

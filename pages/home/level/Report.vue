@@ -3,7 +3,7 @@
  <view class="page">
 			<view class="status-bar" style="height:80px;background:#004CA2;display:block;"></view>
 	
-	<view class="root">
+	<view class="root" style="margin-top: 80px;" >
 		
 		<view >
 		<view class="box1">
@@ -21,10 +21,10 @@
 				设备类型<view class="red">*</view>
 			</view>
 				<picker class="box1-picker" mode="selector" :range="equipment" @change="openchange">
-					 <view class="box1-picker-sele">
+					 <view class="box1-picker-sele" style="display:flex;justify-content:space-between;align-items:center;width:100%;">
 						<view>{{ sele }}</view>
-						<view>&#xe601;</view>
-					 </view>
+						<image src="/static/icon_jt_xx.png" style="width:32rpx; height: 32rpx;flex-shrink:0;margin-right:16rpx;" ></image>
+					 </view> 
 				</picker>
 				<view v-if="picker" class="error-text">
 					{{ picker }}
@@ -40,7 +40,7 @@
 					{{enterTime}}
 				</view>
 				<view class="">
-					&#x101eb;
+					<image src="/static/icon_time_bigimg.png" style="width:32rpx; height: 32rpx;"></image>
 				</view>
 			</view>
 				
@@ -52,10 +52,10 @@
 			</view>
 				<view class="photo" @click="upload">
 					<view class="photo-tb">
-						&#xe8bc;
+					  <image src="/static/icon_phone_img.png"></image>
 					</view>
 					<view class="">
-						相机拍照/从相机选择
+						拍照/从相机选择
 					</view>
 				</view>
 				<view class="photo-text">
@@ -260,7 +260,14 @@ export default {
 			border-radius:16rpx;
 		}
 		.photo-tb{
-			font-size: 52rpx;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			margin-bottom: 10rpx;
+		}
+		.photo-tb image{
+			width: 58rpx;
+			height: 52rpx;
 		}
 		.photo-text{
 			font-size: 28rpx;

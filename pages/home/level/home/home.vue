@@ -59,7 +59,8 @@
 						<button class="user-card-Record-Component-btn">进场</button>
 						</view>
 							<view class="record-time">
-							&#xe633;打卡时间2025-11-10 14:20
+								<image src="/static/icon_time_img.png" style="width: 22rpx; height: 22rpx; margin-right: 8rpx;"></image>
+								打卡时间2025-11-10 14:20
 								<view class="record-time-rigth">
 								&#xe847;工作A区
 								</view>
@@ -75,7 +76,8 @@
 							<button class="user-card-Record-Component-btnt">退场</button>
 						</view>
 						<view class="record-time">
-								&#xe633;打卡时间2025-11-10 14:20
+								<image src="/static/icon_time_img.png" style="width: 22rpx; height: 22rpx; margin-right: 8rpx;"></image>
+								 打卡时间2025-11-10 14:20
 							<view class="record-time-rigth">
 								&#xe847;工作A区
 							</view>
@@ -91,7 +93,8 @@
 							<button class="user-card-Record-Component-btnt">退场</button>
 						</view>
 						<view class="record-time">
-							&#xe633;打卡时间2025-11-10 14:20
+							<image src="/static/icon_time_img.png" style="width: 22rpx; height: 22rpx; margin-right: 8rpx;"></image>
+							 打卡时间2025-11-10 14:20
 							<view class="record-time-rigth">
 								&#xe847;工作A区
 							</view>
@@ -115,7 +118,8 @@
 						<button class="user-card-Equipment-Component-btn1">正常</button>
 						</view>
 							<view class="record-time">
-							&#xe633;最后打卡时间2025-11-10 14:20
+								<image src="/static/icon_time_img.png" style="width: 22rpx; height: 22rpx; margin-right: 8rpx;"></image>
+								最后打卡时间2025-11-10 14:20
 								<view class="record-time-rigth">
 								</view>
 							</view>
@@ -129,7 +133,8 @@
 							<button class="user-card-Record-Component-btnt2">警告</button>
 						</view>
 						<view class="record-time">
-								&#xe633;最后打卡时间2025-11-10 14:20
+								<image src="/static/icon_time_img.png" style="width: 22rpx; height: 22rpx; margin-right: 8rpx;"></image>
+								最后打卡时间2025-11-10 14:20
 							<view class="record-time-rigth">
 							</view>
 						</view>
@@ -143,7 +148,8 @@
 							<button class="user-card-Record-Component-btnt3">故障</button>
 						</view>
 						<view class="record-time">
-							&#xe633;最后打卡时间2025-11-10 14:20
+								<image src="/static/icon_time_img.png" style="width: 22rpx; height: 22rpx; margin-right: 8rpx;"></image>
+							最后打卡时间2025-11-10 14:20
 							<view class="record-time-rigth">
 
 							</view>
@@ -293,7 +299,7 @@ export default {
 		color: #666;
 		font-size: 26rpx;
 		display: flex;
-		justify-content: space-between;
+		align-items: center;
 	}
 	
 	.user-card-Record-text{

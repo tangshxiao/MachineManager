@@ -1,7 +1,8 @@
 <template>
   <view class="page-container">
-  <!-- 搜索框 -->
-    <view class="search-box"  style="position:relative;padding: 20rpx 30rpx 20rpx 0;" >
+<view class="status-bar" style="height:80px;background:#004CA2;display:block;"></view>
+    <!-- 搜索框 -->
+    <view class="search-box"  style="margin-top: 80px;position:relative;padding: 20rpx 30rpx 20rpx 0;" >
        <image src="/static/icon_secrch_img.png" style="width:28rpx;height:28rpx;position:absolute;left:58rpx;z-index:1;"></image>
         <input 
           type="text" 
@@ -46,8 +47,8 @@
 						</view>
 					</view>
 					<view class="device-item-time">
-            <image src="/static/icon_time_img.png" style="width: 22rpx; height: 22rpx;"></image>
-					  最后打卡时间:{{ finallys[0].date }}{{ finallys[0].time }}
+						<image src="/static/icon_time_img.png" style="width: 22rpx; height: 22rpx;"></image>
+            最后打卡时间:{{ finallys[0].date }}{{ finallys[0].time }}
 					</view>
 			   </view>
 			   <view :class="['status-tag', item.statuss]">
@@ -125,6 +126,7 @@ page {
 	background-color: #F5F8FC; 
 	 font-family: 'iconfont'; 
 }
+
 
 .search-box {
 	display: flex;
@@ -235,6 +237,16 @@ page {
 	color: #AEB0B9;
 	font-size: 28rpx;
 }
+  .status-bar {
+    height: 80px;
+    height: env(safe-area-inset-top);
+    width: 100%;
+    background: #004CA2;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 999;
+  }
 
 </style>
 
