@@ -171,8 +171,13 @@
 <style>
 	page{
 		position: relative;
-		padding: 32rpx 30rpx 200rpx 30rpx;
-		background-color: #F5F8FC;
+		  height: 100vh;               /*确保页面撑满屏幕*/
+		  padding: 32rpx 30rpx 500rpx 30rpx;
+		  background-color: #F5F8FC;
+
+	}
+	.a{
+		
 	}
 	.Basic{
 		padding-bottom: 30rpx;
@@ -185,19 +190,25 @@
 	.Basic-box{
 		display: flex;
 		background-color: #ffffff;
-		justify-content: space-between;
-		padding: 30rpx 50rpx 30rpx 24rpx;
+		width: 100%;
+		box-sizing: border-box;
+		padding: 30rpx 0rpx 30rpx 24rpx;
 		border-radius: 16rpx;
 		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+		width: 690rpx;
 	}
 	.Title{
 		color: #BFC2C8;
 		font-size: 28rpx;
+
+
 	}
 	.Content{
 		font-size: 30rpx;
 		padding-bottom: 20rpx;
 		font-weight:bold;
+
+
 		
 	}
 	.Content input{
@@ -209,13 +220,15 @@
 		border-radius: 16rpx;
 		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
 		margin-bottom: 20rpx;
+		width: 610rpx;
+		
+		
 	}
 	.Parameter-box-box{
 		display: flex;
 		justify-content: space-between;
 	}
 	.btn{
-		width: 681rpx;
 		height: 130rpx;
 		background-color: #ffffff;
 		padding:30rpx;
