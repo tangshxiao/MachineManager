@@ -10,7 +10,7 @@
           @input="onSearch"
           style="flex:1;padding-left:66rpx;margin-left:30rpx;"
         />
-	  <view class="search-box-btn">
+	  <view class="search-box-btn" @click="newly">
 	  	<image src="/static/icon_add_devices.png" style="width:40rpx;height:40rpx; "></image>
 	  	添加设备
 	  </view>
@@ -108,8 +108,14 @@ export default {
     },
     chooseTab(tabValue) {
       this.currentTab = tabValue;
-    }
-  }
+    },
+	newly (){
+		  uni.navigateTo({
+			  url:'/pages/home/level/Newly'
+		  });
+	}
+  },
+  
 };
 </script>
 

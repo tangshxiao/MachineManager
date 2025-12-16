@@ -17,7 +17,7 @@
 		{
 			"path": "pages/test/scan",
 			"style": {
-				"navigationBarTitleText": "SCAN"
+				"navigationBarTitleText": "新建/编辑设备"
 			}
 		},
 
@@ -57,14 +57,24 @@
 			"style": {
 				"navigationBarTitleText": "异常上报"
 			}
+		},
+		{
+			"path": "pages/home/level/Newly",
+			"style": {
+				"navigationBarTitleText": "新建/编辑设备"
+			}
 		}
+		
 	
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
 		"navigationBarTitleText": "uni-app",
 		"navigationBarBackgroundColor": "#004CA2",
-		"backgroundColor": "#004CA2"
+		"backgroundColor": "#004CA2",
+		"app-plus": {
+		    "bounce": "none"
+		  }
 	},
 	"mp-weixin":{
 		"appid":"wxd5dfdf6fd6c6c279"

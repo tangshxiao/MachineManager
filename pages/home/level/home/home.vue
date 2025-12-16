@@ -22,9 +22,9 @@
 							异常上报
 						</view>
 					</view>
-					<view class="user-card-Function-imga">
+					<view class="user-card-Function-imga" @click="devices">
 						<image src="/imgs/shouyetu2.png" alt="" />
-						<view class="user-card-Function-text" @click="devices">
+						<view class="user-card-Function-text" >
 							我的设备
 						</view>
 					</view>
