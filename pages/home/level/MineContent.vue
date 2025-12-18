@@ -28,7 +28,7 @@
       <image src="/static/icon_right_jt.png" mode="aspectFill" class="arrow-icon"></image>
     </view>
     
-    <view class="menu-item" @click="navigateTo('records')">
+    <view class="menu-item" @click="check">
       <view class="menu-left">
         <image src="/static/icon_dk_leftimg.png" mode="aspectFill" class="menu-icon"></image>
         <text class="menu-text">所有打卡数据</text>
@@ -49,6 +49,13 @@ export default {
     navigateTo(page) {
       console.log('Navigate to:', page);
     },
+	
+	check(){
+		uni.navigateTo({
+		  url: '/pages/home/level/record/record'
+		});
+	},
+	
     handleLogout() {
       uni.showModal({
         title: '提示',

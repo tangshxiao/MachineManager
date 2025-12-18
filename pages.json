@@ -63,6 +63,12 @@
 			"style": {
 				"navigationBarTitleText": "新建/编辑设备"
 			}
+		},
+		{
+			"path": "pages/home/level/record/record",
+			"style": {
+				"navigationBarTitleText": "所有打卡记录"
+			}
 		}
 		
 	
