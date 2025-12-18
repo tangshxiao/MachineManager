@@ -45,7 +45,11 @@
                 "dSYMs" : false
             },
             /* SDK配置 */
-            "sdkConfigs" : {}
+            "sdkConfigs" : {},
+            "splashscreen" : {
+                "androidStyle" : "common",
+                "useOriginalMsgbox" : false
+            }
         }
     },
     /* 快应用特有相关 */
@@ -70,6 +74,9 @@
     "uniStatistics" : {
         "enable" : false
     },
+	"app-harmony": {
+		"projectPath": "E:/project/CompanyProject/package"
+	},
     "vueVersion" : "3",
     "locale" : "zh-Hans",
     "app-harmony" : {

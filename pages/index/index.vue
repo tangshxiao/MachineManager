@@ -31,27 +31,26 @@
 
 
 <script>
+import http from '../../utils/request.js'
+import API_ENDPOINTS from '../../config/api.js'
+
 export default {
   data() {
     return {
       selected: [],   // 多选保存数组
       loading: false,
-      projects: [
-        { id: '1', name: '地铁18号线延伸工程' },
-        { id: '2', name: '地铁18号线延伸工程'},
-        { id: '3', name: '地铁18号线延伸工程' },
-        { id: '4', name: '地铁18号线延伸工程' },
-        { id: '5', name: '地铁18号线延伸工程'},
-        { id: '6', name: '地铁18号线延伸工程' },
-        { id: '7', name: '地铁18号线延伸工程' },
-        { id: '8', name: '地铁18号线延伸工程' },
-		{ id: '9', name: '地铁18号线延伸工程' },
-		{ id: '10', name: '地铁18号线延伸工程' },
-		{ id: '11', name: '地铁18号线延伸工程' },
-		{ id: '12', name: '地铁18号线延伸工程' },
-		{ id: '13', name: '地铁18号线延伸工程' },
-		{ id: '14', name: '地铁18号线延伸工程' },
-      ]
+      // 项目列表与分页
+      projects: [],
+      pageNum: 1,
+      pageSize: 10,
+      hasMore: true
+    }
+  },
+
+  // 下拉加载更多
+  onReachBottom() {
+    if (this.hasMore && !this.loading) {
+      this.loadProjectList(false)
     }
   },
 
@@ -67,50 +66,75 @@ export default {
       }
     },
 
-	
-	sweep(){
-		// uni.switchTab({
-		// 	url: '/pages/home/level/home/home',
-		// 	fail: (err) => {
-		// 		console.error('跳转失败:', err);
-		// 		uni.showToast({
-		// 			title: '跳转失败',
-		// 			icon: 'none'
-		// 		});
-		// 	}
-		// });
-		
-		uni.navigateTo({
-			url:'/pages/home/level/MainContainer',
-		});
-		
-	},
+    // 登录并加载第一页项目列表
+    async sweep() {
+      if (this.loading) return
+      this.loading = true
+      try {
+        // 1. 登录，获取 token（账号密码写死）
+        const loginData = await http.post(API_ENDPOINTS.LOGIN_API, {
+          username: 'test',
+          password: '123456'
+        })
 
-    
-   /* loadProjectData() {
-      // if (this.loading) return
+        if (loginData && loginData.token) {
+          uni.setStorageSync('token', loginData.token)
+        }
+
       
-      // this.loading = true
-      
-      // // 模拟加载数据
-      // setTimeout(() => {
-      //   uni.showToast({
-      //     title: '项目数据加载完成',
-      //     icon: 'success'
-      //   })
-        
-      //   this.loading = false
-      // }, 1500)
-	  // 调起条码扫描
-	  uni.scanCode({
-	  	scanType: ['barCode'],
-	  	success: function (res) {
-	  		console.log('条码类型：' + res.scanType);
-	  		console.log('条码内容：' + res.result);
-	  	}
-	  });
-    },*/
-    
+
+        // 2. 登录成功后，请求项目列表第一页
+        await this.loadProjectList(true)
+        // uni.showToast({
+        //         title: '登录成功',
+        //         icon: 'success'
+        //       })
+        // // 3. 获取列表后再跳转
+        // uni.navigateTo({
+        //   url: '/pages/home/level/MainContainer',
+        // })
+      } catch (err) {
+        console.error('登录或加载项目列表失败:', err)
+        uni.showToast({
+          title: '登录或加载列表失败',
+          icon: 'none'
+        })
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // 加载项目列表，支持分页
+    async loadProjectList(reset = false) {
+      try {
+        const nextPage = reset ? 1 : this.pageNum + 1
+        const res = await http.post(API_ENDPOINTS.PROJECT_LIST_API, {
+          current: nextPage,
+          size: this.pageSize
+        })
+
+        // res 是 data，对象里有 records/total/size/current/pages
+        const records = (res && res.records) || []
+
+        if (reset) {
+          this.projects = records
+        } else {
+          this.projects = this.projects.concat(records)
+        }
+
+        this.pageNum = res.current || nextPage
+        this.total = res.total || this.projects.length
+        this.size = res.size || this.pageSize
+        this.hasMore = this.projects.length < this.total && records.length >= this.size
+      } catch (e) {
+        console.error('加载项目列表失败:', e)
+        uni.showToast({
+          title: '加载列表失败',
+          icon: 'none'
+        })
+      }
+    },
+
     // 获取选中的项目名称
     getSelectedProjectName() {
       const selected = this.projects.find(p => p.id === this.selectedProject)
