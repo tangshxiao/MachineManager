@@ -156,11 +156,12 @@
 			</view>
 			<input type="text"  placeholder="定期保养，状态良好" />
 		</view>
+	</view >
+		
 	</view>
-		<view class="button">
-			<button>取消</button>
-			<button>确定</button>
-		</view>
+	<view class="btn">
+		<button class="btn-btn">取消</button>
+		<button class="btn-but">确定</button>
 	</view>
 </template>
 
@@ -169,8 +170,14 @@
 
 <style>
 	page{
-		padding: 32rpx 30rpx 30rpx 30rpx;
-		background-color: #F5F8FC;
+		position: relative;
+		  height: 100vh;               /*确保页面撑满屏幕*/
+		  padding: 32rpx 30rpx 500rpx 30rpx;
+		  background-color: #F5F8FC;
+
+	}
+	.a{
+		
 	}
 	.Basic{
 		padding-bottom: 30rpx;
@@ -183,19 +190,25 @@
 	.Basic-box{
 		display: flex;
 		background-color: #ffffff;
-		justify-content: space-between;
-		padding: 30rpx 50rpx 30rpx 24rpx;
+		width: 100%;
+		box-sizing: border-box;
+		padding: 30rpx 0rpx 30rpx 24rpx;
 		border-radius: 16rpx;
 		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+		width: 690rpx;
 	}
 	.Title{
 		color: #BFC2C8;
 		font-size: 28rpx;
+
+
 	}
 	.Content{
 		font-size: 30rpx;
 		padding-bottom: 20rpx;
 		font-weight:bold;
+
+
 		
 	}
 	.Content input{
@@ -206,14 +219,57 @@
 		padding: 30rpx 50rpx 30rpx 24rpx;
 		border-radius: 16rpx;
 		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+		margin-bottom: 20rpx;
+		width: 610rpx;
+		
+		
 	}
 	.Parameter-box-box{
 		display: flex;
 		justify-content: space-between;
 	}
-	.button{
-		position: ;
+	.btn{
+		height: 130rpx;
 		background-color: #ffffff;
-		padding: 0 0 0 ;
+		padding:30rpx;
+		position: fixed;
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.5);
+		bottom: 0;
+		left: 0;
+		right: 0;
+		display: block;
+		justify-content: space-between;
+		display: flex;           /* 使用弹性布局 */
+		  align-items: center;     /* 垂直方向居中 */
+		  justify-content: center; 
+		  
+		
+	}
+	.btn-btn{
+		background-color: #E4F1FF;
+		color: white;
+		border: none;
+		border-radius: 99pt;
+		padding: 28rpx 0;
+		font-size: 36rpx;
+		color: #004CA2;
+		width: 304rpx;
+		height: 90rpx;
+		display: flex;           /* 使用弹性布局 */
+		  align-items: center;     /* 垂直方向居中 */
+		  justify-content: center; 
+	}
+	.btn-but{
+		background-color: #004CA2;
+		color: white;
+		border: none;
+		border-radius: 99pt;
+		padding: 28rpx 0;
+		font-size: 36rpx;
+		width: 304rpx;
+		height: 90rpx;
+		display: flex;           /* 使用弹性布局 */
+		  align-items: center;     /* 垂直方向居中 */
+		  justify-content: center; 
 	}
 </style>
