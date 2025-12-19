@@ -20,7 +20,7 @@
     </view>
 
     <!-- Menu Items -->
-    <view class="menu-item" @click="navigateTo('offline')" style="margin-top: 70rpx;">
+    <view class="menu-item"@click="offline" style="margin-top: 70rpx;">
       <view class="menu-left">
         <image src="/static/icon_lx_leftimg.png" mode="aspectFill" class="menu-icon"></image>
         <text class="menu-text">离线缓存记录</text>
@@ -53,6 +53,12 @@ export default {
 	check(){
 		uni.navigateTo({
 		  url: '/pages/home/level/record/record'
+		});
+	},
+	
+	offline(){
+		uni.navigateTo({
+		  url: '/pages/home/level/Offline/Offline'
 		});
 	},
 	

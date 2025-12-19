@@ -69,6 +69,12 @@
 			"style": {
 				"navigationBarTitleText": "所有打卡记录"
 			}
+		},
+		{
+			"path": "pages/home/level/Offline/Offline",
+			"style": {
+				"navigationBarTitleText": "离线缓存记录"
+			}
 		}
 		
 	

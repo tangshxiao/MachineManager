@@ -90,8 +90,8 @@ export default {
         //         icon: 'success'
         //       })
         // // 3. 获取列表后再跳转
-        // uni.navigateTo({
-        //   url: '/pages/home/level/MainContainer',
+        //uni.navigateTo({
+          //url: '/pages/home/level/MainContainer',
         // })
       } catch (err) {
         console.error('登录或加载项目列表失败:', err)
