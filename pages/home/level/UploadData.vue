@@ -10,7 +10,7 @@
 				</view>
 			</view>
 			<view class="Head-right">
-				<img src="/static/image@2x.png" alt="" />
+				<img src="/static/icon_bg_update.png" alt="" />
 			</view>
 		</view>
 	

@@ -49,58 +49,42 @@
 					最近打卡纪录
 				</view>
 					
-					<view class="user-card-Record-Hide">
-					<view class="user-card-Record-Component">
-						<view class="user-card-Record-Component-text">
-							<view class="record-info">
-								<view>生成线设备</view>
-								<view>EQ-2025-001</view>
-							</view>
-						<button class="user-card-Record-Component-btn">进场</button>
-						</view>
-							<view class="record-time">
-								<image src="/static/icon_time_img.png" style="width: 22rpx; height: 22rpx; margin-right: 8rpx;"></image>
-								打卡时间2025-11-10 14:20
-								<view class="record-time-rigth">
-								&#xe847;工作A区
+						<view class="user-card-Record-Hide">
+							<view
+								class="user-card-Record-Component"
+								v-for="item in attendanceList"
+								:key="item.id"
+							>
+								<view class="user-card-Record-Component-text">
+									<view class="record-info">
+										<view>{{ item.name || '设备名称' }}</view>
+										<view>{{ item.deviceNo || '-' }}</view>
+									</view>
+									<button
+										class="user-card-Record-Component-btn"
+										v-if="item.type === 0"
+									>
+										进场
+									</button>
+									<button
+										class="user-card-Record-Component-btnt"
+										v-else
+									>
+										退场
+									</button>
+								</view>
+								<view class="record-time">
+									<image src="/static/icon_time_img.png" style="width: 22rpx; height: 22rpx; margin-right: 8rpx;"></image>
+									打卡时间{{ item.time || '' }}
+									<view class="record-time-rigth">
+										{{ item.address || '' }}
+									</view>
 								</view>
 							</view>
-					</view>
-					
-					<view class="user-card-Record-Component">
-						<view class="user-card-Record-Component-text">
-							<view class="record-info">
-								<view>生成线设备</view>
-								<view>EQ-2025-001</view>
+							<view v-if="attendanceList.length === 0" class="user-card-Record-Component" style="text-align:center;color:#999;">
+								暂无打卡记录
 							</view>
-							<button class="user-card-Record-Component-btnt">退场</button>
-						</view>
-						<view class="record-time">
-								<image src="/static/icon_time_img.png" style="width: 22rpx; height: 22rpx; margin-right: 8rpx;"></image>
-								 打卡时间2025-11-10 14:20
-							<view class="record-time-rigth">
-								&#xe847;工作A区
-							</view>
-						</view>
-					</view>
-					
-					<view class="user-card-Record-Component">
-						<view class="user-card-Record-Component-text">
-							<view class="record-info">
-								<view>生成线设备</view>
-								<view>EQ-2025-001</view>
-							</view>
-							<button class="user-card-Record-Component-btnt">退场</button>
-						</view>
-						<view class="record-time">
-							<image src="/static/icon_time_img.png" style="width: 22rpx; height: 22rpx; margin-right: 8rpx;"></image>
-							 打卡时间2025-11-10 14:20
-							<view class="record-time-rigth">
-								&#xe847;工作A区
-							</view>
-						</view>
-					</view>
-				</view>	
+						</view>	
 			</view>
 			<view class="user-card-Equipment">
 				<view class="user-card-Equipment-text">
@@ -109,53 +93,31 @@
 					常用设备
 				</view>
 				
-				<view class="user-card-Equipment-Hide">
-					<view class="user-card-Equipment-Component1">
-						<view class="user-card-Equipment-Component-text">
-							<view class="record-info">
-								<view>EQ-2025-001挖掘机</view>
-							</view>
-						<button class="user-card-Equipment-Component-btn1">正常</button>
-						</view>
-							<view class="record-time">
-								<image src="/static/icon_time_img.png" style="width: 22rpx; height: 22rpx; margin-right: 8rpx;"></image>
-								最后打卡时间2025-11-10 14:20
-								<view class="record-time-rigth">
+						<view class="user-card-Equipment-Hide">
+							<view
+								class="user-card-Equipment-Component1"
+								v-for="item in deviceList"
+								:key="item.id"
+							>
+								<view class="user-card-Equipment-Component-text">
+									<view class="record-info">
+										<view>{{ item.deviceNo || '-' }} {{ item.name || '' }}</view>
+									</view>
+									<button class="user-card-Equipment-Component-btn1" v-if="item.status === 0">正常</button>
+									<button class="user-card-Record-Component-btnt2" v-else-if="item.status === 1">警告</button>
+									<button class="user-card-Record-Component-btnt3" v-else>故障</button>
 								</view>
+									<view class="record-time">
+										<image src="/static/icon_time_img.png" style="width: 22rpx; height: 22rpx; margin-right: 8rpx;"></image>
+										最后打卡时间{{ item.lastTime || '' }}
+										<view class="record-time-rigth">
+										</view>
+									</view>
 							</view>
-					</view>
-					
-					<view class="user-card-Equipment-Component2">
-						<view class="user-card-Equipment-Component-text">
-							<view class="record-info">
-								<view>EQ-2025-001</view>
+							<view v-if="deviceList.length === 0" class="user-card-Equipment-Component1" style="text-align:center;color:#999;">
+								暂无常用设备
 							</view>
-							<button class="user-card-Record-Component-btnt2">警告</button>
-						</view>
-						<view class="record-time">
-								<image src="/static/icon_time_img.png" style="width: 22rpx; height: 22rpx; margin-right: 8rpx;"></image>
-								最后打卡时间2025-11-10 14:20
-							<view class="record-time-rigth">
-							</view>
-						</view>
-					</view>
-					
-					<view class="user-card-Equipment-Component3">
-						<view class="user-card-Equipment-Component-text">
-							<view class="record-info">
-								<view>EQ-2025-001</view>
-							</view>
-							<button class="user-card-Record-Component-btnt3">故障</button>
-						</view>
-						<view class="record-time">
-								<image src="/static/icon_time_img.png" style="width: 22rpx; height: 22rpx; margin-right: 8rpx;"></image>
-							最后打卡时间2025-11-10 14:20
-							<view class="record-time-rigth">
-
-							</view>
-						</view>
-					</view>
-				</view>	
+						</view>	
 			</view>
 		</view>
 	   <!-- 自定义 tabbar 固定在底部 -->
@@ -165,25 +127,74 @@
 
 <script>
 	import CustomTabBar from '@/components/custom-tab-bar.vue'
-
-
-export default {
+	import http from '@/utils/request.js'
+	import API_ENDPOINTS from '@/config/api.js'
+	
+	export default {
  
  components: {
     CustomTabBar
   },
   data() {
     return {
-      // 这里放数据
-      shebei: '',
-      shengchan: '',
-      message: '',
-      enterTime: '',
-      person: ''
+      // 最近打卡记录分页
+      attendanceList: [],
+      attendanceCurrent: 1,
+      attendanceSize: 10,
+      // 常用设备分页
+      deviceList: [],
+      deviceCurrent: 1,
+      deviceSize: 10
     }
   },
- 
+
+  mounted() {
+    this.loadAttendanceList()
+    this.loadDeviceList()
+  },
+
   methods: {
+    async loadAttendanceList() {
+      try {
+        const res = await http.post(API_ENDPOINTS.ATTENDANCE_LIST_API, {
+          current: this.attendanceCurrent,
+          size: this.attendanceSize
+        })
+        const records = (res && res.records) || []
+        this.attendanceList = records
+        this.attendanceCurrent = (res && res.current) || this.attendanceCurrent
+        this.attendanceSize = (res && res.size) || this.attendanceSize
+        console.log('最近打卡记录 attendanceList:', this.attendanceList)
+      } catch (e) {
+        console.error('获取最近打卡记录失败:', e)
+        uni.showToast({
+          title: '获取打卡记录失败',
+          icon: 'none'
+        })
+      }
+    },
+
+    async loadDeviceList() {
+      try {
+        const res = await http.post(API_ENDPOINTS.DEVICE_LIST_API, {
+          sort: 0,
+          current: this.deviceCurrent,
+          size: this.deviceSize
+        })
+        const records = (res && res.records) || []
+        this.deviceList = records
+        this.deviceCurrent = (res && res.current) || this.deviceCurrent
+        this.deviceSize = (res && res.size) || this.deviceSize
+        console.log('常用设备 deviceList:', this.deviceList)
+      } catch (e) {
+        console.error('获取常用设备失败:', e)
+        uni.showToast({
+          title: '获取常用设备失败',
+          icon: 'none'
+        })
+      }
+    },
+
     // 点击“打卡”跳转页面
     daka() {
       uni.navigateTo({

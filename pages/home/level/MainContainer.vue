@@ -51,8 +51,15 @@ export default {
   },
   data() {
     return {
-      currentTab: 0
+      currentTab: 0,
+      ids: []
     }
+  },
+  onLoad(options) {
+    const idsStr = decodeURIComponent((options && options.ids) || '')
+    console.log('MainContainer 收到的 ids 字符串:', idsStr)
+    this.ids = idsStr ? idsStr.split(',') : []
+    console.log('MainContainer 拆分后的 ids 数组:', this.ids)
   },
   mounted() {
     console.log('MainContainer mounted, currentTab:', this.currentTab);

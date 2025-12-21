@@ -76,7 +76,7 @@ export default {
       try {
         // 1. 登录，获取 token（账号密码写死）
         const loginData = await http.post(API_ENDPOINTS.LOGIN_API, {
-          username: 'test',
+          username: 'dt',
           password: '123456'
         })
 
@@ -152,7 +152,7 @@ export default {
       return selected ? selected.name : ''
     }
   }
-}
+} 
 </script>
 
 <style>
