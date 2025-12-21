@@ -4,20 +4,23 @@
 	 {
 	 	"path": "pages/index/index",
 	 	"style": {
-	 		"navigationBarTitleText": "选择项目"
+	 		"navigationBarTitleText": "选择项目",
+	 		"navigationBarTextStyle": "white"
 	 	}
 	 },
 		{
 			"path": "pages/home/MainActivity",
 			"style": {
-				"navigationBarTitleText": "首页"
+				"navigationBarTitleText": "首页",
+	 			"navigationBarTextStyle": "white"
 			}
 		},
 	
 		{
 			"path": "pages/test/scan",
 			"style": {
-				"navigationBarTitleText": "新建/编辑设备"
+				"navigationBarTitleText": "新建/编辑设备",
+				"navigationBarTextStyle": "white"
 			}
 		},
 
@@ -31,49 +34,57 @@
 		{
 			"path": "pages/home/level/home/home",
 			"style": {
-				"navigationBarTitleText": "首页"
+				"navigationBarTitleText": "首页",
+				"navigationBarTextStyle": "white"
 			}
 		},
 		{
 			"path": "pages/home/level/UploadData",
 			"style": {
-				"navigationBarTitleText": "扫码"
+				"navigationBarTitleText": "扫码",
+				"navigationBarTextStyle": "white"
 			}
 		},
 		{
 			"path": "pages/home/level/Devices/Devices",
 			"style": {
-				"navigationBarTitleText": "我的设备"
+				"navigationBarTitleText": "我的设备",
+				"navigationBarTextStyle": "white"
 			}
 		},
 		{
 			"path": "pages/home/level/Mine",
 			"style": {
-				"navigationBarTitleText": "我的"
+				"navigationBarTitleText": "我的",
+				"navigationBarTextStyle": "white"
 			}
 		},
 		{
 			"path": "pages/home/level/Abnormal",
 			"style": {
-				"navigationBarTitleText": "异常上报"
+				"navigationBarTitleText": "异常上报",
+				"navigationBarTextStyle": "white"
 			}
 		},
 		{
 			"path": "pages/home/level/Newly",
 			"style": {
-				"navigationBarTitleText": "新建/编辑设备"
+				"navigationBarTitleText": "新建/编辑设备",
+				"navigationBarTextStyle": "white"
 			}
 		},
 		{
 			"path": "pages/home/level/record/record",
 			"style": {
-				"navigationBarTitleText": "所有打卡记录"
+				"navigationBarTitleText": "所有打卡记录",
+				"navigationBarTextStyle": "white"
 			}
 		},
 		{
 			"path": "pages/home/level/Offline/Offline",
 			"style": {
-				"navigationBarTitleText": "离线缓存记录"
+				"navigationBarTitleText": "离线缓存记录",
+				"navigationBarTextStyle": "white"
 			}
 		}
 		

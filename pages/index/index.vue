@@ -7,7 +7,7 @@
           :key="index" 
           class="project-item" 
           @tap="toggleSelect(project.id)">
-          <view class="radio-wrapper">
+          <view class="radio-wrapper" >
             <text class="project-name">{{ project.name }}</text>
 
             <view class="circle-checkbox" :class="{ active: selected.includes(project.id) }">
@@ -19,7 +19,7 @@
     </view>
 
     <view  class="floating-footer">
-      <button @click="sweep" class="load-btn">
+      <button @click="goNext" class="load-btn" :disabled="!selected.length" style="height: 90rpx;">
         <view class="btn-content">
           <text class="btn-text">加载项目数据</text>
         </view>
@@ -35,6 +35,9 @@ import http from '../../utils/request.js'
 import API_ENDPOINTS from '../../config/api.js'
 
 export default {
+  onLoad() {
+    this.sweep()
+  },
   data() {
     return {
       selected: [],   // 多选保存数组
@@ -104,6 +107,14 @@ export default {
       }
     },
 
+    goNext() {
+      if (!this.selected.length) return
+      const ids = this.selected.join(',')
+      uni.navigateTo({
+        url: `/pages/home/level/MainContainer?ids=${encodeURIComponent(ids)}`
+      })
+    },
+
     // 加载项目列表，支持分页
     async loadProjectList(reset = false) {
       try {
@@ -165,7 +176,9 @@ export default {
   padding: 5rpx;
   background-color: #FFFFFF;
   border-radius: 8rpx;
-  margin: 20rpx 0;
+  margin-top: 20rpx;
+  margin-left: 24rpx;
+  margin-right: 24rpx;
 }
 
 .radio-wrapper {
@@ -174,6 +187,8 @@ export default {
   justify-content: space-between;
   margin-top: 11rpx;
   margin-bottom: 10rpx;
+  padding: 8rpx;
+
 }
 
 .project-name {
@@ -225,9 +240,23 @@ export default {
   color: white;
   border: none;
   border-radius: 99pt;
-  padding: 28rpx 0;
+  height: 90rpx;
+  padding: 0;
   font-size: 36rpx;
   margin-bottom: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.load-btn[disabled] {
+  background-color: #999999;
+  color: #666666;
+  opacity: 1;
+}
+
+.load-btn[disabled] .btn-text {
+  color: #666666;
 }
 
 .btn-content {
