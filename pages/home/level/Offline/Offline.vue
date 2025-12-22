@@ -79,17 +79,12 @@
       <view class="action-btn" @click="uploadSelectedItems">选中数据重新上传</view>
     </view>
 
-	 <custom-tab-bar />
 	 
   </view>
 </template>
 
 <script>
-	import CustomTabBar from '@/components/custom-tab-bar.vue'
 export default {
-	components: {
-	   CustomTabBar
-	 },
 	
   data() {
     return {
@@ -398,7 +393,7 @@ export default {
 /* 底部通知条 */
 .bottom-notice {
   position: fixed;
-  bottom: 120rpx; /* Tabbar高度之上 */
+  bottom: 20rpx; /* Tabbar高度之上 */
   left: 30rpx;
   right: 30rpx;
   background: #E6F0FC;

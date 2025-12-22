@@ -38,18 +38,13 @@
       <view class="bottom-spacer"></view>
     </scroll-view>
 
-    <custom-tab-bar />
 
   </view>
 </template>
 
 <script>
-	import CustomTabBar from '@/components/custom-tab-bar.vue'
 export default {
-  components: {
-     CustomTabBar
-   },
-  
+
   data() { 
     return {
       list: [
