@@ -38,8 +38,8 @@
 	  <view class="device-item-box">
 			  <view class="">
 				   <view class="device-item-text">
-						<view class="">
-							{{ item.code }}
+							<view class="">
+							{{ item.deviceNo }}
 						</view>
 						<view class="">
 							{{ item.name }}
@@ -47,7 +47,7 @@
 					</view>
 					<view class="device-item-time">
             <image src="/static/icon_time_img.png" style="width: 22rpx; height: 22rpx;"></image>
-					  最后打卡时间:{{ finallys[0].date }}{{ finallys[0].time }}
+					  最后打卡时间:{{ item.lastTime }}
 					</view>
 			   </view>
 			   <view :class="['status-tag', item.statuss]">
@@ -65,6 +65,9 @@
 
 
 <script>
+import http from '@/utils/request.js'
+import API_ENDPOINTS from '@/config/api.js'
+
 export default {
   data() {
     return {
@@ -76,44 +79,90 @@ export default {
         { label: "警告", value: "警告" },
         { label: "故障", value: "故障" }
       ],
-      // 示例设备数据（后端可替换为 uni.request 获取）
-      deviceList: [
-        { id: 1, code: "EQ-2025-0001", name: "挖掘机", status: "正常" , statuss:"normal"},
-        { id: 2, code: "EQ-2025-0002", name: "装载机", status: "警告" , statuss:"warning"},
-        { id: 3, code: "EQ-2025-0003", name: "装载机", status: "故障" , statuss:"error"},
-        { id: 4, code: "EQ-2025-0004", name: "装载机", status: "正常" , statuss:"normal"},
-      ],
+      // 设备列表（后端接口返回）
+      deviceList: [],
+      // 分页参数
+      deviceCurrent: 1,
+      deviceSize: 10,
 	  finallys:[
-			{date:"2025-11-10",time:"14:20"},
+			{date:"",time:""},
 		  ],
     };
+  },
+  mounted() {
+	this.loadDeviceList();
   },
   computed: {
     filteredList() {
       return this.deviceList.filter(item => {
-        // 分类筛选
-        const matchTab = this.currentTab === "all" 
-          || item.status === this.currentTab;
-        // 关键字搜索（编号或名称）
+        // 仅按关键字在前端过滤，状态由接口的 status 参数控制
         const matchKeyword = !this.keyword 
-          || item.code.includes(this.keyword) 
-          || item.name.includes(this.keyword);
-        return matchTab && matchKeyword;
+          || (item.deviceNo && item.deviceNo.includes(this.keyword))
+          || (item.name && item.name.includes(this.keyword));
+        return matchKeyword;
       });
     }
   },
   methods: {
     onSearch() {
-      // 输入时自动触发过滤（computed 会自动更新）
+	  this.deviceCurrent = 1;
+	  this.loadDeviceList();
     },
     chooseTab(tabValue) {
       this.currentTab = tabValue;
+	  this.deviceCurrent = 1;
+	  this.loadDeviceList();
     },
+	async loadDeviceList() {
+	  try {
+		const statusMap = {
+		  '正常': 0,
+		  '警告': 1,
+		  '故障': 2
+		};
+		const status = statusMap[this.currentTab];
+		const params = {
+		  sort: 0,
+		  current: this.deviceCurrent,
+		  size: this.deviceSize,
+		  keyword: this.keyword
+		};
+		// 全部时不传 status，其他状态传 0/1/2
+		if (status !== undefined) {
+		  params.status = status;
+		}
+		const res = await http.post(API_ENDPOINTS.DEVICE_LIST_API, params);
+		const records = (res && res.records) || [];
+		// 将后端返回的 status(0/1/2) 转成页面展示需要的字段
+		const statusDisplayMap = {
+		  0: { text: '正常', cls: 'normal' },
+		  1: { text: '警告', cls: 'warning' },
+		  2: { text: '故障', cls: 'error' }
+		};
+		this.deviceList = records.map(item => {
+		  const s = statusDisplayMap[item.status];
+		  if (s) {
+			return {
+			  ...item,
+			  status: s.text,
+			  statuss: s.cls
+			};
+		  }
+		  return item;
+		});
+	  } catch (e) {
+		console.error('获取设备列表失败:', e);
+		uni.showToast({
+		  title: '获取设备列表失败',
+		  icon: 'none'
+		});
+	  }
+	},
 	newly (){
 		  uni.navigateTo({
 			  url:'/pages/home/level/Newly'
 		  });
-	}
+		}
   },
   
 };
