@@ -42,6 +42,33 @@
 				</view>
 			</view>
 			<view class="Content-text">
+				证明材料:
+			</view>
+			<view v-if="!images.length" class="photo" @click="upload">
+				<view class="photo-tb" >
+				   <image src="/static/icon_phone_img.png"></image>
+				</view>
+				<view class="">
+					拍照/从相机选择
+				</view>
+			</view>
+			<view v-else class="photo-row">
+				<view class="photo-slot" v-for="(item, index) in images" :key="item">
+					<image class="thumb-img" :src="item" mode="aspectFill" @click.stop="previewImage(index)"></image>
+					<view class="delete-btn" @click.stop="removeImage(index)">删除</view>
+				</view>
+				<view
+					class="photo-slot add-slot"
+					v-if="images.length < 5"
+					@click="upload"
+				>
+					<text class="add-icon">+</text>
+				</view>
+			</view>
+			<view class="photo-text">
+				支持JPG/PNG格式，最多上传5张（已选 {{ images.length }} 张）
+			</view>
+			<view class="Content-text">
 				设备二维码:
 				 <view class="">
 					
@@ -76,7 +103,8 @@
 			shengchan:"生产线B设备",
 			message: "进场",
 			enterTime:"",
-			person:"老周"
+			person:"老周",
+			images:[]
 	    }
 	  },
 	  
@@ -95,10 +123,53 @@
 	 
 	        // 拼接成想要的格式
 	       this.enterTime = `${y}-${m}-${d} ${h}:${min}:${s}`
-	     }
+	     },
+		 upload(){
+		 	if (this.images.length >= 5) {
+		 	  uni.showToast({
+		 	    title: "最多上传5张图片",
+		 	    icon: "none",
+		 	  });
+		 	  return;
+		 	}
+		 	const remain = 5 - this.images.length;
+		 	uni.chooseImage({
+		 	  count: remain,
+		 	  sizeType: ["original", "compressed"],
+		 	  sourceType: ["camera", "album"],
+		 	  success: (res) => {
+		 	    const paths = res.tempFilePaths || [];
+		 	    const validExt = [".jpg", ".jpeg", ".png"];
+		 	    const newImages = [];
+		 	    paths.forEach((p) => {
+		 	      const lower = String(p).toLowerCase();
+		 	      const ok = validExt.some((ext) => lower.endsWith(ext));
+		 	      if (ok) {
+		 	        newImages.push(p);
+		 	      }
+		 	    });
+		 	    if (newImages.length < paths.length) {
+		 	      uni.showToast({
+		 	        title: "仅支持JPG/PNG格式",
+		 	        icon: "none",
+		 	      });
+		 	    }
+		 	    this.images = this.images.concat(newImages).slice(0, 5);
+		 	  },
+		 	});
+		 },
+		 removeImage(index){
+		 	this.images.splice(index,1)
+		 },
+		 previewImage(index){
+		 	uni.previewImage({
+		 	  urls: this.images,
+		 	  current: this.images[index],
+		 	});
+		 }
 	   },
 	   
-	}
+	 }
 </script>
 <style>
 	.root{
@@ -180,8 +251,7 @@
 		display: flex;
 		padding: 20rpx 0;
 		border-radius: 10rpx;
-	}
-	
+		}
 	.Content-text-left{
 		padding: 0 10rpx;
 	}
@@ -190,12 +260,83 @@
 		color: #50B0F9;
 		font-weight: bold;
 	}
+	.photo{
+		height: 200rpx; 
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		flex-direction: column;
+		color: #808080;
+		background-color: #FFFFFF;
+		border-radius:16rpx;
+	}
+	.photo-disabled{
+		opacity: 0.5;
+	}
+	.photo-tb{
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		margin-bottom: 10rpx;
+	}
+	.photo-tb image{
+		width: 58rpx;
+		height: 52rpx;
+	}
+	.photo-text{
+		font-size: 28rpx;
+		color: #808080;
+	}
+	.photo-row{
+		min-height: 200rpx;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-start;
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 16rpx 20rpx;
+	}
+	.photo-slot{
+		position: relative;
+		width: 30%;
+		height: 170rpx;
+		border-radius: 12rpx;
+		overflow: hidden;
+		background-color: #F5F9FC;
+		margin-right: 3%;
+		margin-bottom: 16rpx;
+	}
+	.photo-slot:nth-child(3n){
+		margin-right: 0;
+	}
+	.delete-btn{
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		height: 40rpx;
+		line-height: 40rpx;
+		text-align: center;
+		font-size: 24rpx;
+		color: #FFFFFF;
+		background: rgba(0,0,0,0.45);
+	}
+	.add-slot{
+		justify-content: center;
+		align-items: center;
+		display: flex;
+		border: 2rpx dashed #CCCCCC;
+		background-color: transparent;
+	}
+	.add-icon{
+		font-size: 56rpx;
+		color: #FF5A5A;
+	}
 	.Content-btn-left:hover {
 		background-color: #c2dfff;
 		transform: translateY(-2px);
 		box-shadow: 0 4rpx 12rpx rgba(0, 76, 162, 0.2);
 	}
-	
 	.Content-btn-right:hover {
 		background-color: #003d82;
 		transform: translateY(-2px);
