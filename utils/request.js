@@ -1,4 +1,5 @@
 // 通用网络请求工具（uni-app）
+import logger from './logger.js'
 
 // 核心请求方法
 const request = (options = {}) => {
@@ -33,6 +34,23 @@ const request = (options = {}) => {
     requestData = JSON.stringify(data)
   }
 
+  // 生成请求ID，用于关联请求和响应
+  const requestId = Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+  const startTime = Date.now()
+
+  // 记录请求日志
+  logger.addLog(logger.formatRequestLog({
+    url,
+    method,
+    data: requestData,
+    header: {
+      'Content-Type': contentType,
+      'Authorization': token ? `Bearer ${token}` : '',
+      'token': token || '',
+      ...header
+    }
+  }, requestId))
+
   return new Promise((resolve, reject) => {
     uni.request({
       // 这里假设传入的 url 已经是完整地址（在 config/api.js 中配置）
@@ -48,7 +66,15 @@ const request = (options = {}) => {
         ...header
       },
       success: (res) => {
-        const { statusCode, data } = res
+        const duration = Date.now() - startTime
+        const { statusCode, data, header } = res
+
+        // 记录响应日志
+        logger.addLog(logger.formatResponseLog({
+          statusCode,
+          data,
+          header
+        }, requestId, duration, url))
 
         if (statusCode === 200) {
           // 按常见后端返回结构：{ code, data, msg }
@@ -70,6 +96,11 @@ const request = (options = {}) => {
         }
       },
       fail: (err) => {
+        const duration = Date.now() - startTime
+        
+        // 记录错误日志
+        logger.addLog(logger.formatErrorLog(err, requestId, duration, url))
+        
         uni.showToast({
           title: '请求失败，请检查网络',
           icon: 'none'
@@ -133,6 +164,21 @@ const upload = (filePath, config = {}) => {
 
   const token = uni.getStorageSync('token') || ''
 
+  // 生成请求ID
+  const requestId = Date.now() + '_upload_' + Math.random().toString(36).substr(2, 9)
+  const startTime = Date.now()
+
+  // 记录上传请求日志
+  logger.addLog(logger.formatRequestLog({
+    url,
+    method: 'UPLOAD',
+    data: { filePath, name, formData },
+    header: {
+      'Authorization': token ? `Bearer ${token}` : '',
+      'token': token || ''
+    }
+  }, requestId))
+
   return new Promise((resolve, reject) => {
     uni.uploadFile({
       url,
@@ -144,8 +190,17 @@ const upload = (filePath, config = {}) => {
         'token': token || ''
       },
       success: (res) => {
+        const duration = Date.now() - startTime
         try {
           const data = JSON.parse(res.data)
+          
+          // 记录上传响应日志
+          logger.addLog(logger.formatResponseLog({
+            statusCode: 200,
+            data,
+            header: res.header || {}
+          }, requestId, duration, url))
+          
           if (data && (data.code === 0 || data.code === 200 || data.code === '0')) {
             resolve(data.data)
           } else {
@@ -156,6 +211,9 @@ const upload = (filePath, config = {}) => {
             reject(data)
           }
         } catch (e) {
+          // 记录解析错误日志
+          logger.addLog(logger.formatErrorLog(e, requestId, duration, url))
+          
           uni.showToast({
             title: '上传响应解析失败',
             icon: 'none'
@@ -164,6 +222,11 @@ const upload = (filePath, config = {}) => {
         }
       },
       fail: (err) => {
+        const duration = Date.now() - startTime
+        
+        // 记录上传错误日志
+        logger.addLog(logger.formatErrorLog(err, requestId, duration, url))
+        
         uni.showToast({
           title: '上传失败，请检查网络',
           icon: 'none'

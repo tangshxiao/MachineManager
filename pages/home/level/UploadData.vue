@@ -95,8 +95,7 @@
 </view>
 </template>
 <script>
-
-	export default {
+export default {
 	  data() {
 	    return {
 			shebei:"DEVOOOO3",
@@ -107,8 +106,42 @@
 			images:[]
 	    }
 	  },
-	  
+	  onLoad() {
+		// 页面加载时获取当前时间
+		this.getEnterTime();
+	  },
+	  onShow() {
+		// 每次显示页面时触发扫码
+		this.scanCode();
+	  },
 	 methods: {
+		  // 扫码功能
+		  scanCode() {
+			uni.scanCode({
+			  scanType: ['barCode', 'qrCode'],
+			  success: (res) => {
+				console.log('条码类型：' + res.scanType);
+				console.log('条码内容：' + res.result);
+				// 这里可以根据扫码结果更新页面数据
+				// 例如：this.shebei = res.result;
+				uni.showToast({
+				  title: '扫码成功',
+				  icon: 'success'
+				});
+			  },
+			  fail: (err) => {
+				console.error('扫码失败:', err);
+				// 扫码失败时不显示错误提示，避免影响用户体验
+				// 如果用户主动取消扫码，不需要提示
+				if (err.errMsg && !err.errMsg.includes('cancel')) {
+				  uni.showToast({
+					title: '扫码失败',
+					icon: 'none'
+				  });
+				}
+			  }
+			});
+		  },
 		  // 获取当前时间并格式化
 	     getEnterTime() {
 			   // 创建时间对象
@@ -175,6 +208,7 @@
 	.root{
 		padding-left: 36rpx;
 		padding-right: 34rpx;
+		padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
 		background-color:#F6F7FD;
 	}
 	.Head{

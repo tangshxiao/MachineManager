@@ -37,7 +37,7 @@ export default {
           selectedIconPath: "/static/icon_home_sel.png"
         },
         {
-          pagePath: "/pages/home/level/home",
+          pagePath: "/pages/home/level/Report",
           text: "上报",
           iconPath: "/static/icon_upload_def.png",
           selectedIconPath: "/static/icon_upload_sel.png"
@@ -49,7 +49,7 @@ export default {
           selectedIconPath: "/static/icon_home_scan.png"
         },
         {
-          pagePath: "/pages/home/level/Devices/Devices",
+          pagePath: "/pages/home/level/DevicesMang",
           text: "设备",
           iconPath: "/static/icon_device_def.png",
           selectedIconPath: "/static/icon_device_sel.png"
@@ -68,6 +68,7 @@ export default {
   },
   mounted() {
     this.updateCurrentPage();
+    console.log('CustomTabBar mounted, current:', this.current);
   },
   methods: {
     updateCurrentPage() {
@@ -81,7 +82,16 @@ export default {
     switchTab(index, url) {
       if (this.current === index) return;
       this.current = index;
-      this.$emit('tab-change', index);
+      
+      // 使用 switchTab 来切换页面，流畅无闪烁
+      if (url) {
+        uni.switchTab({
+          url: url,
+          fail: (err) => {
+            console.error('switchTab 失败:', err);
+          }
+        });
+      }
     }
   }
 };
@@ -89,15 +99,20 @@ export default {
 
 <style>
 .custom-tab-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 100rpx;
-  background: #FFFFFF;
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  height: 100rpx !important;
+  background: #FFFFFF !important;
   box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
-  z-index: 999;
+  z-index: 99999 !important;
+  padding-bottom: constant(safe-area-inset-bottom);
   padding-bottom: env(safe-area-inset-bottom);
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .tab-bar {
@@ -130,12 +145,12 @@ export default {
 }
 
 .tab-bar-icon.center {
-  width: 90rpx;
-  height: 90rpx;
-  margin-top: -40rpx;
+  width: 110rpx;
+  height: 110rpx;
+  margin-top: -50rpx;
   background: #1A73E8;
   border-radius: 50%;
-  padding: 10rpx;
+  padding: 12rpx;
   box-sizing: border-box;
   box-shadow: 0 4rpx 12rpx rgba(26, 115, 232, 0.3);
 }

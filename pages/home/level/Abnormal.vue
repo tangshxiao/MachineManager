@@ -438,15 +438,15 @@ export default {
         
         // 4. 提交上报数据
         const submitData = {
-          id: 0,
-          deviceId: 0, // 这里可能需要根据设备编号获取实际设备ID
+ 
+          deviceId: 365, // 这里可能需要根据设备编号获取实际设备ID
           type: type,
           address: this.address || "",
           lng: this.lng || "",
           lat: this.lat || "",
           imgs: imgs,
           remark: this.beizhu.trim(),
-          time: this.enterTime,
+          time: this.enterTime+":00",
           status: 1 // 1异常（因为这是异常上报）
         };
         

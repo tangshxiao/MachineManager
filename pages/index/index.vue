@@ -36,6 +36,16 @@ import API_ENDPOINTS from '../../config/api.js'
 
 export default {
   onLoad() {
+    // 检查是否已选择项目，如果已选择则直接跳转到首页
+    const selectedProjectIds = uni.getStorageSync('selectedProjectIds')
+    if (selectedProjectIds) {
+      console.log('检测到已选择项目，自动跳转到首页')
+      uni.switchTab({
+        url: '/pages/home/level/home/home'
+      })
+      return
+    }
+    // 如果没有选择项目，则加载项目列表
     this.sweep()
   },
   data() {
@@ -110,8 +120,11 @@ export default {
     goNext() {
       if (!this.selected.length) return
       const ids = this.selected.join(',')
-      uni.navigateTo({
-        url: `/pages/home/level/MainContainer?ids=${encodeURIComponent(ids)}`
+      // 由于 switchTab 不支持 URL 参数，使用本地存储传递参数
+      uni.setStorageSync('selectedProjectIds', ids)
+      // 跳转到 tabBar 首页（使用 switchTab）
+      uni.switchTab({
+        url: '/pages/home/level/home/home'
       })
     },
 

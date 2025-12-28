@@ -1,8 +1,6 @@
 <template>
 	 <view class="page">
-
-		<view class="status-bar" style="height:80px;background:#004CA2;display:block;"></view>
-		<view class="user-card" style="margin-top: 80px;">
+		<view class="user-card">
 			<view class="user-card-button">
 				<button class="user-card-btn"@click="daka" style="display:flex;align-items:center;justify-content:center;">
 					<image src="/static/icon_scan_img.png" mode="aspectFill" style="width:40rpx;height:40rpx;margin-right:10rpx;"></image>
@@ -120,21 +118,14 @@
 						</view>	
 			</view>
 		</view>
-	   <!-- 自定义 tabbar 固定在底部 -->
-    	<custom-tab-bar />
 	</view>
 </template>
 
 <script>
-	import CustomTabBar from '@/components/custom-tab-bar.vue'
 	import http from '@/utils/request.js'
 	import API_ENDPOINTS from '@/config/api.js'
 	
 	export default {
- 
- components: {
-    CustomTabBar
-  },
   data() {
     return {
       // 最近打卡记录分页
@@ -144,13 +135,26 @@
       // 常用设备分页
       deviceList: [],
       deviceCurrent: 1,
-      deviceSize: 10
+      deviceSize: 10,
+      // 选择的项目 IDs
+      selectedProjectIds: []
     }
   },
 
   mounted() {
     this.loadAttendanceList()
     this.loadDeviceList()
+  },
+
+  onShow() {
+    // 从本地存储读取选择的项目 IDs
+    const idsStr = uni.getStorageSync('selectedProjectIds') || ''
+    if (idsStr) {
+      this.selectedProjectIds = idsStr.split(',')
+      console.log('首页接收到的项目 IDs:', this.selectedProjectIds)
+      // 读取后可以清空，避免重复使用
+      // uni.removeStorageSync('selectedProjectIds')
+    }
   },
 
   methods: {
@@ -197,9 +201,34 @@
 
     // 点击“打卡”跳转页面
     daka() {
-      uni.navigateTo({
-        url: '/pages/home/level/UploadData'
-      });
+    //   uni.navigateTo({
+    //     url: '/pages/home/level/UploadData'
+    //   });
+		uni.scanCode({
+			scanType: ['barCode', 'qrCode'],
+			success: (res) => {
+				console.log('条码类型：' + res.scanType);
+				console.log('条码内容：' + res.result);
+				// 这里可以根据扫码结果更新页面数据
+				// 例如：this.shebei = res.result;
+				uni.showToast({
+				title: '扫码成功',
+				icon: 'success'
+				});
+			},
+			fail: (err) => {
+				console.error('扫码失败:', err);
+				// 扫码失败时不显示错误提示，避免影响用户体验
+				// 如果用户主动取消扫码，不需要提示
+				if (err.errMsg && !err.errMsg.includes('cancel')) {
+				uni.showToast({
+					title: '扫码失败',
+					icon: 'none'
+				});
+				}
+			}
+		});
+
     },
 
     // 异常跳转页面
@@ -464,16 +493,8 @@
 		box-sizing: border-box;
 		padding-top: 44px;
 		padding-top: env(safe-area-inset-top);
+		padding-bottom: 100rpx;
+		padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
 	}
 	
-	.status-bar {
-		height: 80px;
-		height: env(safe-area-inset-top);
-		width: 100%;
-		background: #004CA2;
-		position: fixed;
-		top: 0;
-		left: 0;
-		z-index: 999;
-	}
 </style>

@@ -1,9 +1,7 @@
 <template>
 
  <view class="page">
-			<view class="status-bar" style="height:80px;background:#004CA2;display:block;"></view>
-	
-	<view class="root" style="margin-top: 80px;" >
+	<view class="root">
 		
 		<view >
 		<view class="box1">
@@ -448,15 +446,15 @@ export default {
 		
 		// 4. 提交上报数据
 		const submitData = {
-		  id: 0,
-		  deviceId: 0, // 这里可能需要根据设备编号获取实际设备ID
+ 
+		  deviceId: 365, // 这里可能需要根据设备编号获取实际设备ID
 		  type: type,
 		  address: this.address || "",
 		  lng: this.lng || "",
 		  lat: this.lat || "",
 		  imgs: imgs,
 		  remark: this.beizhu.trim(),
-		  time: this.enterTime,
+		  time: this.enterTime+":00",
 		  status: 1 // 1异常（因为这是异常上报）
 		};
 		
@@ -506,6 +504,8 @@ export default {
 		box-sizing: border-box;
 		padding-top: 44px;
 		padding-top: env(safe-area-inset-top);
+		padding-bottom: 100rpx;
+		padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
 	}
 		.root{
 			font-family: iconfont;
@@ -687,15 +687,6 @@ export default {
 		.thumb-img {
 		  width: 200rpx;
 		  height: 200rpx;
-		}	.status-bar {
-		height: 80px;
-		height: env(safe-area-inset-top);
-		width: 100%;
-		background: #004CA2;
-		position: fixed;
-		top: 0;
-		left: 0;
-		z-index: 999;
-	}
+		}
 
 </style>

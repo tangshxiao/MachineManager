@@ -16,10 +16,7 @@
       <view v-if="currentTab === 2" class="page-content scan-page">
       </view>
       
-      <!-- Devices Page -->
-      <view v-if="currentTab === 3" class="page-content">
-        <DevicesContent />
-      </view>
+      <!-- Devices Page - 已改为独立页面，点击标签时跳转到 /pages/home/level/DevicesMang -->
       
       <!-- Mine Page -->
       <view v-if="currentTab === 4" class="page-content">
@@ -27,26 +24,22 @@
       </view>
     </view>
     
-    <!-- Fixed TabBar -->
-    <custom-tab-bar @tab-change="handleTabChange" />
   </view>
 </template>
 
 <script>
-import CustomTabBar from '@/components/custom-tab-bar.vue'
 import HomeContent from './home/home.vue'
 import ReportContent from './Report.vue'
 import ScanContent from './UploadData.vue'
-import DevicesContent from './DevicesMang.vue'
+// import DevicesContent from './DevicesMang.vue' // 已改为独立页面
 import MineContent from './MineContent.vue'
 
 export default {
   components: {
-    CustomTabBar,
     HomeContent,
     ReportContent,
     ScanContent,
-    DevicesContent,
+    // DevicesContent, // 已改为独立页面
     MineContent
   },
   data() {
@@ -65,33 +58,8 @@ export default {
     console.log('MainContainer mounted, currentTab:', this.currentTab);
   },
   methods: {
-    handleTabChange(index) {
-      console.log('Tab changed to:', index);
-      this.currentTab = index;
-      
-      // 当切换到扫码页面时，直接触发扫码
-      if (index === 2) {
-        uni.scanCode({
-          scanType: ['barCode', 'qrCode'],
-          success: function (res) {
-            console.log('条码类型：' + res.scanType);
-            console.log('条码内容：' + res.result);
-            uni.showToast({
-              title: '扫码成功：' + res.result,
-              icon: 'success'
-            });
-          },
-          fail: (err) => {
-            console.error('扫码失败:', err);
-            uni.showToast({
-              title: '扫码失败',
-              icon: 'none'
-            });
-            this.currentTab = 0; // 回到首页
-          }
-        });
-      }
-    }
+    // 注意：使用原生 tabBar 后，页面切换由系统自动处理
+    // 如果需要特殊处理，可以在各个页面的 onLoad 或 onShow 中处理
   }
 }
 </script>
@@ -107,12 +75,14 @@ export default {
   flex: 1;
   overflow: hidden;
   padding-bottom: 100rpx;
+  position: relative;
 }
 
 .page-content {
   height: 100%;
   overflow-y: auto;
 }
+
 
 .scan-page {
   background: transparent;

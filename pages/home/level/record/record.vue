@@ -1,30 +1,39 @@
 <template>
   <view class="container">
-    <scroll-view scroll-y class="content-area">
+    <view class="content-area">
       
-      <view class="card" v-for="(item, index) in list" :key="index">
+      <view class="card" v-for="(item, index) in list" :key="item.id || index">
         
         <view class="card-header">
           <view class="header-left">
-            <text class="device-name">{{ item.name }}</text>
-            <view class="status-tag">
-              <text class="tag-text">{{ item.status }}</text>
+            <text class="device-name">{{ item.name || item.deviceName || '设备名称' }}</text>
+            <view class="status-tag" :class="getStatusClass(item.type)">
+              <text class="tag-text">{{ getStatusText(item.type) }}</text>
             </view>
           </view>
         </view>
 
         <view class="info-row">
-          <text class="info-text">{{ item.deviceId }}</text>
+          <text class="info-text">{{ item.deviceNo || item.deviceId || '-' }}</text>
         </view>
         <view class="info-row">
-          <text class="info-text">{{ item.time }}</text>
+          <text class="info-text">{{ item.time || '-' }}</text>
         </view>
 
-        <view class="media-section">
-          <image class="record-img" :src="item.img" mode="aspectFill"></image>
-          <view class="location-box">
+        <view class="media-section" v-if="item.imgs">
+          <view class="images-container">
+            <image 
+              v-for="(img, imgIndex) in getImageList(item.imgs)" 
+              :key="imgIndex"
+              class="record-img" 
+              :src="img" 
+              mode="aspectFill"
+              @tap="previewImages(item.imgs, imgIndex)"
+            ></image>
+          </view>
+          <view class="location-box" v-if="item.address">
             <text class="loc-icon">&#xe847;</text> 
-            <text class="loc-text">{{ item.location }}</text>
+            <text class="loc-text">{{ item.address }}</text>
           </view>
         </view>
         
@@ -35,41 +44,162 @@
         </view>
       </view>
       
+      <!-- 加载状态 -->
+      <view class="loading-more" v-if="loading">
+        <text class="loading-text">加载中...</text>
+      </view>
+      
+      <!-- 没有更多数据 -->
+      <view class="no-more" v-if="!hasMore && list.length > 0">
+        <text class="no-more-text">没有更多数据了</text>
+      </view>
+      
+      <!-- 空状态 -->
+      <view class="empty-state" v-if="!loading && list.length === 0">
+        <text class="empty-text">暂无打卡记录</text>
+      </view>
+      
       <view class="bottom-spacer"></view>
-    </scroll-view>
-
-
+    </view>
   </view>
 </template>
 
 <script>
-export default {
+import http from '@/utils/request.js'
+import API_ENDPOINTS from '@/config/api.js'
 
+export default {
   data() { 
     return {
-      list: [
-        {
-          name: '设备W',
-          status: '退场',
-          deviceId: 'DEV822',
-          time: '2025-11-10 14:20',
-          location: '工作A区',
-          // 使用占位图，实际请替换为你的图片链接
-          img: 'https://images.unsplash.com/photo-1596706062103-3a85ecb0a514?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80'
-        },
-        {
-          name: '设备W',
-          status: '退场',
-          deviceId: 'DEV822',
-          time: '2025-11-10 14:20',
-          location: '工作A区',
-          img: 'https://images.unsplash.com/photo-1596706062103-3a85ecb0a514?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80'
-        }
-      ]
+      list: [],
+      current: 1,
+      size: 10,
+      total: 0,
+      loading: false,
+      refreshing: false,
+      hasMore: true,
+      loadMoreTimer: null // 防抖定时器
     }
   },
+  onLoad() {
+    this.loadAttendanceList(true)
+  },
+  // 下拉刷新
+  onPullDownRefresh() {
+    this.onRefresh()
+  },
+  // 上拉加载更多
+  onReachBottom() {
+    this.onLoadMore()
+  },
   methods: {
-    // 页面逻辑
+    // 加载打卡记录列表
+    async loadAttendanceList(reset = false) {
+      if (this.loading) return
+      
+      this.loading = true
+      
+      try {
+        const nextPage = reset ? 1 : this.current + 1
+        
+        const res = await http.post(API_ENDPOINTS.ATTENDANCE_LIST_API, {
+          current: nextPage,
+          size: this.size
+        })
+        
+        const records = (res && res.records) || []
+        
+        if (reset) {
+          this.list = records
+        } else {
+          this.list = this.list.concat(records)
+        }
+        
+        this.current = res.current || nextPage
+        this.size = res.size || this.size
+        this.total = res.total || 0
+        
+        // 判断是否还有更多数据
+        this.hasMore = this.list.length < this.total && records.length >= this.size
+        
+      } catch (e) {
+        console.error('获取打卡记录失败:', e)
+        if (!reset) {
+          uni.showToast({
+            title: '加载失败',
+            icon: 'none'
+          })
+        }
+      } finally {
+        this.loading = false
+        this.refreshing = false
+      }
+    },
+    
+    // 下拉刷新
+    async onRefresh() {
+      this.refreshing = true
+      await this.loadAttendanceList(true)
+      // 停止下拉刷新动画
+      uni.stopPullDownRefresh()
+    },
+    
+    // 上拉加载更多（添加防抖和更严格的判断）
+    onLoadMore() {
+      // 如果正在加载、正在刷新或没有更多数据，直接返回
+      if (this.loading || this.refreshing || !this.hasMore) {
+        return
+      }
+      
+      // 清除之前的定时器
+      if (this.loadMoreTimer) {
+        clearTimeout(this.loadMoreTimer)
+        this.loadMoreTimer = null
+      }
+      
+      // 防抖：延迟执行，避免频繁触发
+      this.loadMoreTimer = setTimeout(() => {
+        // 再次检查状态，确保在延迟期间状态没有改变
+        if (!this.loading && !this.refreshing && this.hasMore) {
+          this.loadAttendanceList(false)
+        }
+        this.loadMoreTimer = null
+      }, 300)
+    },
+    
+    // 获取状态文本
+    getStatusText(type) {
+      // type: 0进场 1离场
+      const statusMap = {
+        0: '进场',
+        1: '离场'
+      }
+      return statusMap[type] || '未知'
+    },
+    
+    // 获取状态样式类
+    getStatusClass(type) {
+      // 0进场-绿色, 1离场-蓝色
+      return type === 0 ? 'status-in' : 'status-out'
+    },
+    
+    // 获取图片列表
+    getImageList(imgs) {
+      if (!imgs) return []
+      const imgArray = typeof imgs === 'string' ? imgs.split(',').map(img => img.trim()).filter(img => img) : imgs
+      return imgArray || []
+    },
+    
+    // 预览图片
+    previewImages(imgs, currentIndex) {
+      const imgList = this.getImageList(imgs)
+      if (imgList.length > 0) {
+        uni.previewImage({
+          urls: imgList,
+          current: currentIndex
+        })
+      }
+    }
   }
 }
 </script>
@@ -131,15 +261,29 @@ page {
 }
 
 .status-tag {
-  background-color: #E6F7FF; /* 浅蓝色背景 */
   padding: 4rpx 12rpx;
   border-radius: 8rpx;
 }
 
+.status-tag.status-in {
+  background-color: #F6FFED; /* 浅绿色背景 */
+}
+
+.status-tag.status-out {
+  background-color: #E6F7FF; /* 浅蓝色背景 */
+}
+
 .tag-text {
   font-size: 24rpx;
-  color: #1890FF; /* 蓝色文字 */
   font-weight: 500;
+}
+
+.status-tag.status-in .tag-text {
+  color: #52C41A; /* 绿色文字 */
+}
+
+.status-tag.status-out .tag-text {
+  color: #1890FF; /* 蓝色文字 */
 }
 
 .info-row {
@@ -154,22 +298,29 @@ page {
 .media-section {
   margin-top: 20rpx;
   position: relative;
+}
+
+.images-container {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-end; /* 底部对齐 */
+  flex-wrap: wrap;
+  margin-right: -12rpx;
+  margin-bottom: 16rpx;
 }
 
 .record-img {
-  width: 160rpx;
-  height: 160rpx;
+  width: calc(33.333% - 12rpx);
+  height: 220rpx;
   border-radius: 12rpx;
   background-color: #eee;
+  flex-shrink: 0;
+  margin-right: 12rpx;
+  margin-bottom: 12rpx;
 }
 
 .location-box {
   display: flex;
   align-items: center;
-  margin-bottom: 10rpx; /* 微调位置 */
+  margin-top: 10rpx;
 }
 
 .loc-icon {
@@ -213,6 +364,39 @@ page {
 
 .bottom-spacer {
   height: 180rpx; /* 留出底部导航栏的高度 */
+}
+
+/* 加载状态 */
+.loading-more {
+  padding: 30rpx 0;
+  text-align: center;
+}
+
+.loading-text {
+  font-size: 26rpx;
+  color: #999;
+}
+
+/* 没有更多 */
+.no-more {
+  padding: 30rpx 0;
+  text-align: center;
+}
+
+.no-more-text {
+  font-size: 26rpx;
+  color: #999;
+}
+
+/* 空状态 */
+.empty-state {
+  padding: 200rpx 0;
+  text-align: center;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #999;
 }
 
 /* --- 自定义底部导航栏样式 --- */

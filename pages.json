@@ -1,13 +1,50 @@
 {
-	"pages": [ 
-	
+	"pages": [
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "选择项目",
+				"navigationBarTextStyle": "white"
+			}
+		},
 	 {
-	 	"path": "pages/index/index",
+	 	"path": "pages/home/level/home/home",
 	 	"style": {
-	 		"navigationBarTitleText": "选择项目",
+	 		"navigationBarTitleText": "首页",
 	 		"navigationBarTextStyle": "white"
 	 	}
 	 },
+	 {
+	 	"path": "pages/home/level/Report",
+	 	"style": {
+	 		"navigationBarTitleText": "异常上报",
+	 		"navigationBarTextStyle": "white"
+	 	}
+	 },
+	 {
+	 	"path": "pages/home/level/UploadData",
+	 	"style": {
+	 		"navigationBarTitleText": "扫码",
+	 		"navigationBarTextStyle": "white"
+	 	}
+	 },
+	 {
+	 	"path": "pages/home/level/DevicesMang",
+	 	"style": {
+	 		"navigationBarTitleText": "设备管理",
+	  		"navigationBarTextStyle": "white",
+	 		"enablePullDownRefresh": true
+	 	}
+	 },
+	 {
+	 	"path": "pages/home/level/Mine",
+	 	"style": {
+	 		"navigationBarTitleText": "我的",
+	 		"navigationBarTextStyle": "white",
+			 "navigationStyle": "custom"
+	 	}
+	 },
+	
 		{
 			"path": "pages/home/MainActivity",
 			"style": {
@@ -32,31 +69,11 @@
 			}
 		},
 		{
-			"path": "pages/home/level/home/home",
-			"style": {
-				"navigationBarTitleText": "首页",
-				"navigationBarTextStyle": "white"
-			}
-		},
-		{
-			"path": "pages/home/level/UploadData",
-			"style": {
-				"navigationBarTitleText": "扫码",
-				"navigationBarTextStyle": "white"
-			}
-		},
-		{
 			"path": "pages/home/level/Devices/Devices",
 			"style": {
 				"navigationBarTitleText": "我的设备",
-				"navigationBarTextStyle": "white"
-			}
-		},
-		{
-			"path": "pages/home/level/Mine",
-			"style": {
-				"navigationBarTitleText": "我的",
-				"navigationBarTextStyle": "white"
+				"navigationBarTextStyle": "white",
+				"enablePullDownRefresh": true
 			}
 		},
 		{
@@ -77,13 +94,21 @@
 			"path": "pages/home/level/record/record",
 			"style": {
 				"navigationBarTitleText": "所有打卡记录",
-				"navigationBarTextStyle": "white"
+				"navigationBarTextStyle": "white",
+				"enablePullDownRefresh": true
 			}
 		},
 		{
 			"path": "pages/home/level/Offline/Offline",
 			"style": {
 				"navigationBarTitleText": "离线缓存记录",
+				"navigationBarTextStyle": "white"
+			}
+		},
+		{
+			"path": "pages/debug/logs",
+			"style": {
+				"navigationBarTitleText": "网络请求日志",
 				"navigationBarTextStyle": "white"
 			}
 		}
@@ -102,5 +127,46 @@
 	"mp-weixin":{
 		"appid":"wxd5dfdf6fd6c6c279"
 	},
-	"uniIdRouter": {}
+	"uniIdRouter": {},
+	
+	"tabBar": {
+		"color": "#999999",
+		"selectedColor": "#1A73E8",
+		"backgroundColor": "#FFFFFF",
+		"borderStyle": "black",
+		"list": [
+			{
+				"pagePath": "pages/home/level/home/home",
+				"text": "首页",
+				"iconPath": "static/icon_home_def.png",
+				"selectedIconPath": "static/icon_home_sel.png"
+			},
+			{
+				"pagePath": "pages/home/level/Report",
+				"text": "上报",
+				"iconPath": "static/icon_upload_def.png",
+				"selectedIconPath": "static/icon_upload_sel.png"
+			},
+
+			{
+				"pagePath": "pages/home/level/DevicesMang",
+				"text": "设备",
+				"iconPath": "static/icon_device_def.png",
+				"selectedIconPath": "static/icon_device_sel.png"
+			},
+			{
+				"pagePath": "pages/home/level/Mine",
+				"text": "我的",
+				"iconPath": "static/icon_mine_def.png",
+				"selectedIconPath": "static/icon_mine_sel.png"
+			}
+		],
+		 "midButton":{
+				"iconPath":"static/icon_home_scan.png",
+				"height":"60px",
+				"iconWidth":"40px",
+				"text":""
+			}
+		
+	}
 }

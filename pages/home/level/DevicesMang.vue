@@ -1,8 +1,7 @@
 <template>
   <view class="page-container">
-<view class="status-bar" style="height:80px;background:#004CA2;display:block;"></view>
     <!-- 搜索框 -->
-    <view class="search-box"  style="margin-top: 80px;position:relative;padding: 20rpx 30rpx 20rpx 0;" >
+    <view class="search-box" style="position:relative;padding: 20rpx 30rpx 20rpx 0;" >
        <image src="/static/icon_secrch_img.png" style="width:28rpx;height:28rpx;position:absolute;left:58rpx;z-index:1;"></image>
         <input 
           type="text" 
@@ -56,11 +55,20 @@
 			   </view>
 	   </view>
       </view>
-      <view v-if="filteredList.length === 0" class="empty">
+      <view v-if="filteredList.length === 0 && !loading" class="empty">
         没有找到匹配的设备
       </view>
+      
+      <!-- 加载状态 -->
+      <view class="loading-more" v-if="loading">
+        <text class="loading-text">加载中...</text>
+      </view>
+      
+      <!-- 没有更多数据 -->
+      <view class="no-more" v-if="!hasMore && deviceList.length > 0">
+        <text class="no-more-text">没有更多数据了</text>
+      </view>
     </view>
-
   </view>
 </template>
 
@@ -84,13 +92,24 @@ export default {
       // 分页参数
       deviceCurrent: 1,
       deviceSize: 10,
+      total: 0,
+      loading: false,
+      hasMore: true,
 	  finallys:[
 			{date:"",time:""},
 		  ],
     };
   },
   mounted() {
-	this.loadDeviceList();
+	this.loadDeviceList(true);
+  },
+  // 下拉刷新（页面级生命周期）
+  onPullDownRefresh() {
+    this.onRefresh();
+  },
+  // 上拉加载更多（页面级生命周期）
+  onReachBottom() {
+    this.onLoadMore();
   },
   computed: {
     filteredList() {
@@ -106,14 +125,40 @@ export default {
   methods: {
 	onSearch() {
 	  this.deviceCurrent = 1;
-	  this.loadDeviceList();
+	  this.loadDeviceList(true);
 	},
     chooseTab(tabValue) {
       this.currentTab = tabValue;
 	  this.deviceCurrent = 1;
-	  this.loadDeviceList();
+	  this.loadDeviceList(true);
     },
-	async loadDeviceList() {
+	// 下拉刷新
+	async onRefresh() {
+	  if (this.loading) {
+		uni.stopPullDownRefresh();
+		return;
+	  }
+	  
+	  this.deviceCurrent = 1;
+	  await this.loadDeviceList(true);
+	  uni.stopPullDownRefresh();
+	},
+	// 上拉加载更多
+	async onLoadMore() {
+	  if (this.loading || !this.hasMore) {
+		return;
+	  }
+	  await this.loadDeviceList(false);
+	},
+	async loadDeviceList(reset = false) {
+	  if (this.loading) return;
+	  
+	  if (!reset && !this.hasMore) {
+		return;
+	  }
+	  
+	  this.loading = true;
+	  
 	  try {
 		const statusMap = {
 		  '正常': 0,
@@ -121,9 +166,11 @@ export default {
 		  '故障': 2
 		};
 		const status = statusMap[this.currentTab];
+		const nextPage = reset ? 1 : this.deviceCurrent + 1;
+		
 		const params = {
 		  sort: 0,
-		  current: this.deviceCurrent,
+		  current: nextPage,
 		  size: this.deviceSize,
 		  keyword: this.keyword
 		};
@@ -133,13 +180,15 @@ export default {
 		}
 		const res = await http.post(API_ENDPOINTS.DEVICE_LIST_API, params);
 		const records = (res && res.records) || [];
+		
 		// 将后端返回的 status(0/1/2) 转成页面展示需要的字段
 		const statusDisplayMap = {
 		  0: { text: '正常', cls: 'normal' },
 		  1: { text: '警告', cls: 'warning' },
 		  2: { text: '故障', cls: 'error' }
 		};
-		this.deviceList = records.map(item => {
+		
+		const mappedRecords = records.map(item => {
 		  const s = statusDisplayMap[item.status];
 		  if (s) {
 			return {
@@ -150,12 +199,31 @@ export default {
 		  }
 		  return item;
 		});
+		
+		if (reset) {
+		  this.deviceList = mappedRecords;
+		  this.deviceCurrent = 1;
+		} else {
+		  this.deviceList = this.deviceList.concat(mappedRecords);
+		}
+		
+		this.deviceCurrent = res.current || nextPage;
+		this.deviceSize = res.size || this.deviceSize;
+		this.total = res.total || 0;
+		
+		// 判断是否还有更多数据
+		this.hasMore = this.deviceList.length < this.total && records.length >= this.deviceSize;
+		
 	  } catch (e) {
 		console.error('获取设备列表失败:', e);
-		uni.showToast({
-		  title: '获取设备列表失败',
-		  icon: 'none'
-		});
+		if (!reset) {
+		  uni.showToast({
+			title: '加载失败',
+			icon: 'none'
+		  });
+		}
+	  } finally {
+		this.loading = false;
 	  }
 	},
 	newly (){
@@ -177,7 +245,8 @@ export default {
 	}
 page {
 	background-color: #F5F8FC; 
-	 font-family: 'iconfont'; 
+	font-family: 'iconfont';
+	padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
 }
 
 
@@ -290,16 +359,27 @@ page {
 	color: #AEB0B9;
 	font-size: 28rpx;
 }
-  .status-bar {
-    height: 80px;
-    height: env(safe-area-inset-top);
-    width: 100%;
-    background: #004CA2;
-    position: fixed;
-    top: 0;
-    left: 0;
-    z-index: 999;
-  }
 
+/* 加载状态 */
+.loading-more {
+  padding: 30rpx 0;
+  text-align: center;
+}
+
+.loading-text {
+  font-size: 26rpx;
+  color: #999;
+}
+
+/* 没有更多 */
+.no-more {
+  padding: 30rpx 0;
+  text-align: center;
+}
+
+.no-more-text {
+  font-size: 26rpx;
+  color: #999;
+}
 </style>
 
