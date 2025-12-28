@@ -24,6 +24,12 @@
 						title: '扫码成功',
 						icon: 'success'
 						});
+						
+						uni.navigateTo({
+						url: '/pages/home/level/UploadData?result=' + encodeURIComponent(res.result)
+						});
+						
+						
 					},
 					fail: (err) => {
 						console.error('扫码失败:', err);
