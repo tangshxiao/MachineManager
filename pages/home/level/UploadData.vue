@@ -9,8 +9,8 @@
 					扫码打卡
 				</view>
 			</view>
-			<view class="Head-right">
-				<img src="/static/icon_bg_update.png" alt="" />
+			<view >
+				<image src="/static/icon_bg_update.png" mode="widthFix"alt=""class="Head-right" />
 			</view>
 		</view>
 	
@@ -33,7 +33,7 @@
 			</view>
 			<view class="Content-text">
 				当前时间:<view class="Content-text-left">
-					{{ enterTime }}
+					{{  enterTime }}
 				</view>
 			</view>
 			<view class="Content-text">
@@ -95,6 +95,7 @@
 </view>
 </template>
 <script>
+
 export default {
 	  data() {
 	    return {
@@ -103,9 +104,10 @@ export default {
 			message: "进场",
 			enterTime:"",
 			person:"老周",
-			images:[]
+			images:[],
 	    }
 	  },
+
 	  onLoad() {
 		// 页面加载时获取当前时间
 		this.getEnterTime();
@@ -114,34 +116,34 @@ export default {
 		// 每次显示页面时触发扫码
 		this.scanCode();
 	  },
-	 methods: {
-		  // 扫码功能
-		  scanCode() {
-			uni.scanCode({
-			  scanType: ['barCode', 'qrCode'],
-			  success: (res) => {
-				console.log('条码类型：' + res.scanType);
-				console.log('条码内容：' + res.result);
-				// 这里可以根据扫码结果更新页面数据
-				// 例如：this.shebei = res.result;
-				uni.showToast({
-				  title: '扫码成功',
-				  icon: 'success'
-				});
-			  },
-			  fail: (err) => {
-				console.error('扫码失败:', err);
-				// 扫码失败时不显示错误提示，避免影响用户体验
-				// 如果用户主动取消扫码，不需要提示
-				if (err.errMsg && !err.errMsg.includes('cancel')) {
-				  uni.showToast({
-					title: '扫码失败',
-					icon: 'none'
-				  });
-				}
-			  }
-			});
-		  },
+	 // methods: {
+		//   // 扫码功能
+		//   scanCode() {
+		// 	uni.scanCode({
+		// 	  scanType: ['barCode', 'qrCode'],
+		// 	  success: (res) => {
+		// 		console.log('条码类型：' + res.scanType);
+		// 		console.log('条码内容：' + res.result);
+		// 		// 这里可以根据扫码结果更新页面数据
+		// 		// 例如：this.shebei = res.result;
+		// 		uni.showToast({
+		// 		  title: '扫码成功',
+		// 		  icon: 'success'
+		// 		});
+		// 	  },
+		// 	  fail: (err) => {
+		// 		console.error('扫码失败:', err);
+		// 		// 扫码失败时不显示错误提示，避免影响用户体验
+		// 		// 如果用户主动取消扫码，不需要提示
+		// 		if (err.errMsg && !err.errMsg.includes('cancel')) {
+		// 		  uni.showToast({
+		// 			title: '扫码失败',
+		// 			icon: 'none'
+		// 		  });
+		// 		}
+		// 	  }
+		// 	});
+		//   },
 		  // 获取当前时间并格式化
 	     getEnterTime() {
 			   // 创建时间对象
@@ -157,6 +159,82 @@ export default {
 	        // 拼接成想要的格式
 	       this.enterTime = `${y}-${m}-${d} ${h}:${min}:${s}`
 	     },
+
+	  
+	  onLoad(options) {
+	  			this.getEnterTime();
+	  
+	  			if (options && options.result) {
+	  							// 因为首页传过来时可能 encode 了，这里最好 decode 一下
+	  							const resultStr = decodeURIComponent(options.result);
+	  							this.handleScanData(resultStr);
+	  						}
+	  		},
+	  
+	 methods: {
+		 handleScanData(jsonStr) {
+		 				try {
+		 					// 将 JSON 字符串转换为对象
+		 					const data = JSON.parse(jsonStr);
+		 
+		 					// 1. 对应设备编号 (deviceNo -> shebei)
+		 					if (data.deviceNo) {
+		 						this.shebei = data.deviceNo;
+		 					}
+		 
+		 					// 2. 对应设备名称 (name -> shengchan)
+		 					if (data.name) {
+		 						this.shengchan = data.name;
+		 					}
+		 					
+		 					// 3. (可选) 可以在这里把 id 存起来，之后提交用
+		 					// this.deviceId = data.id; 
+		 
+		 					uni.showToast({
+		 						title: '扫码数据加载成功',
+		 						icon: 'success'
+		 					});
+		 
+		 				} catch (e) {
+		 					console.error("解析二维码失败", e);
+		 					uni.showToast({
+		 						title: '二维码格式错误',
+		 						icon: 'none'
+		 					});
+		 					// 容错：如果不是JSON，直接显示原始字符串
+		 					this.shebei = jsonStr;
+		 				}
+		 			},
+		 
+		  getEnterTime() {
+		 
+		 			   // 创建时间对象
+		 
+		 	       const now = new Date()
+		 
+		 			// 获取年月日时分秒，并补零
+		 
+		 	       const y = now.getFullYear()
+		 
+		 	       const m = String(now.getMonth() + 1).padStart(2, '0')
+		 
+		 	       const d = String(now.getDate()).padStart(2, '0')
+		 
+		 	       const h = String(now.getHours()).padStart(2, '0')
+		 
+		 	       const min = String(now.getMinutes()).padStart(2, '0')
+		 
+		 	       const s = String(now.getSeconds()).padStart(2, '0')
+		 
+		 	 
+		 
+		 	        // 拼接成想要的格式
+		 
+		 	       this.enterTime = `${y}-${m}-${d} ${h}:${min}:${s}`
+		 
+		 	     },
+	    
+
 		 upload(){
 		 	if (this.images.length >= 5) {
 		 	  uni.showToast({
@@ -220,7 +298,7 @@ export default {
 	}
 	.Head-right{
 		width: 318rpx;
-
+		
 	}
 	.Head-right img{
 		position: relative;

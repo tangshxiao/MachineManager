@@ -201,35 +201,54 @@
 
     // 点击“打卡”跳转页面
     daka() {
+
     //   uni.navigateTo({
     //     url: '/pages/home/level/UploadData'
     //   });
-		uni.scanCode({
-			scanType: ['barCode', 'qrCode'],
-			success: (res) => {
-				console.log('条码类型：' + res.scanType);
-				console.log('条码内容：' + res.result);
-				// 这里可以根据扫码结果更新页面数据
-				// 例如：this.shebei = res.result;
-				uni.showToast({
-				title: '扫码成功',
-				icon: 'success'
-				});
-			},
-			fail: (err) => {
-				console.error('扫码失败:', err);
-				// 扫码失败时不显示错误提示，避免影响用户体验
-				// 如果用户主动取消扫码，不需要提示
-				if (err.errMsg && !err.errMsg.includes('cancel')) {
-				uni.showToast({
-					title: '扫码失败',
-					icon: 'none'
-				});
-				}
-			}
-		});
+		// uni.scanCode({
+		// 	scanType: ['barCode', 'qrCode'],
+		// 	success: (res) => {
+		// 		console.log('条码类型：' + res.scanType);
+		// 		console.log('条码内容：' + res.result);
+		// 		// 这里可以根据扫码结果更新页面数据
+		// 		// 例如：this.shebei = res.result;
+		// 		uni.showToast({
+		// 		title: '扫码成功',
+		// 		icon: 'success'
+		// 		});
+		// 	},
+		// 	fail: (err) => {
+		// 		console.error('扫码失败:', err);
+		// 		// 扫码失败时不显示错误提示，避免影响用户体验
+		// 		// 如果用户主动取消扫码，不需要提示
+		// 		if (err.errMsg && !err.errMsg.includes('cancel')) {
+		// 		uni.showToast({
+		// 			title: '扫码失败',
+		// 			icon: 'none'
+		// 		});
+		// 		}
+		// 	}
+		// });
 
-    },
+  //   },
+
+    		// 1. 开始扫码
+    		uni.scanCode({
+    			success: (jieguo) => {
+    				console.log('扫码成功,内容:', jieguo.result);
+    				
+    				// 2. 扫码成功后，才执行跳转
+    				// 注意：这里需要加 "?result=" 来告诉下一个页面参数的名字
+    				uni.navigateTo({
+    					url: '/pages/home/level/UploadData?result=' + encodeURIComponent(jieguo.result)
+    				});
+    			},
+    			fail: (err) => {
+    				console.log('扫码失败', err);
+    			}
+    		});
+    	},
+
 
     // 异常跳转页面
     yichang() {
