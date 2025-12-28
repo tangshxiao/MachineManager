@@ -6,7 +6,7 @@
         :key="index" 
         class="tab-bar-item" 
         :class="{ active: current === index }"
-        @click="switchTab(index, item.pagePath)"
+        @click="switchTab"
       >
         <view class="tab-bar-icon" :class="{ 'center': index === 2 }">
           <image 
@@ -79,9 +79,20 @@ export default {
       }
     },
     switchTab(index, url) {
-      if (this.current === index) return;
-      this.current = index;
-      this.$emit('tab-change', index);
+      uni.scanCode({
+      	success: (jieguo) => {
+      		console.log('扫码成功,内容:', jieguo.result);
+      		
+      		// 2. 扫码成功后，才执行跳转
+      		// 注意：这里需要加 "?result=" 来告诉下一个页面参数的名字
+      		uni.navigateTo({
+      			url: '/pages/home/level/UploadData?result=' + encodeURIComponent(jieguo.result)
+      		});
+      	},
+      	fail: (err) => {
+      		console.log('扫码失败', err);
+      	}
+      });
     }
   }
 };

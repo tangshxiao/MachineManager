@@ -197,10 +197,22 @@
 
     // 点击“打卡”跳转页面
     daka() {
-      uni.navigateTo({
-        url: '/pages/home/level/UploadData'
-      });
-    },
+    		// 1. 开始扫码
+    		uni.scanCode({
+    			success: (jieguo) => {
+    				console.log('扫码成功,内容:', jieguo.result);
+    				
+    				// 2. 扫码成功后，才执行跳转
+    				// 注意：这里需要加 "?result=" 来告诉下一个页面参数的名字
+    				uni.navigateTo({
+    					url: '/pages/home/level/UploadData?result=' + encodeURIComponent(jieguo.result)
+    				});
+    			},
+    			fail: (err) => {
+    				console.log('扫码失败', err);
+    			}
+    		});
+    	},
 
     // 异常跳转页面
     yichang() {
