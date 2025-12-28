@@ -1,21 +1,27 @@
 <template>
   <view class="container">
     
+    <!-- 网络恢复提示 -->
+    <view class="network-notice" v-if="showNetworkNotice && hasPendingRecords">
+      <text>已检测到网络，可上传缓存数据</text>
+      <view class="notice-upload-btn" @click="uploadAll">立即上传</view>
+    </view>
+
     <view class="stats-card">
       <view class="stat-item">
-        <text class="stat-num blue">9</text>
+        <text class="stat-num blue">{{ stats.total }}</text>
         <text class="stat-label">总缓存记录</text>
       </view>
       <view class="stat-item">
-        <text class="stat-num orange">7</text>
+        <text class="stat-num orange">{{ stats.pending }}</text>
         <text class="stat-label">未上传</text>
       </view>
       <view class="stat-item">
-        <text class="stat-num green">2</text>
+        <text class="stat-num green">{{ stats.success }}</text>
         <text class="stat-label">已上传</text>
       </view>
       <view class="stat-item">
-        <text class="stat-num gray">1</text>
+        <text class="stat-num gray">{{ stats.corrupted }}</text>
         <text class="stat-label">损坏</text>
       </view>
     </view>
@@ -70,9 +76,9 @@
       <view style="height: 120rpx;"></view>
     </scroll-view>
 
-    <view class="bottom-notice" v-if="!isSelectMode">
-      <text>5条记录中3条上传成功，<text class="red-text">2条失败</text>。</text>
-      <view class="notice-btn">查看详情</view>
+    <view class="bottom-notice" v-if="!isSelectMode && uploadResult">
+      <text>{{ uploadResult.total }}条记录中{{ uploadResult.success }}条上传成功，<text class="red-text">{{ uploadResult.failed }}条失败</text>。</text>
+      <view class="notice-btn" @click="clearUploadResult">查看详情</view>
     </view>
 
     <view class="bottom-action-bar" v-if="isSelectMode && hasSelectedItems">
@@ -84,67 +90,105 @@
 </template>
 
 <script>
+import { 
+  getAllCacheRecords, 
+  deleteCacheRecord, 
+  markRecordUploaded,
+  getCacheStats,
+  checkAndFixCorruptedRecords
+} from '@/utils/offlineCache.js'
+import http from '@/utils/request.js'
+import API_ENDPOINTS from '@/config/api.js'
+
 export default {
 	
   data() {
     return {
-    
-      listData: [
-        {
-          id: 1,
-          deviceName: '设备W',
-          tag: '退场',
-          time: '2025-11-10 14:20',
-          status: 'normal',
-          location: '工作A区',
-          imgUrl: '/static/leaf.jpg', // 请替换为本地图片路径
-          selected: false
-        },
-        {
-          id: 2,
-          deviceName: '设备W',
-          tag: '进场',
-          time: '2025-11-10 14:20',
-          status: 'normal',
-          location: '工作A区',
-          imgUrl: '/static/leaf.jpg',
-          selected: false
-        },
-        {
-          id: 3,
-          deviceName: '设备W',
-          tag: '异常上报', // 对应红色标签
-          time: '2025-11-10 14:20',
-          status: 'normal',
-          location: '未知地址',
-          imgUrl: '/static/leaf.jpg',
-          selected: false
-        },
-        {
-          id: 4,
-          deviceName: '设备W',
-          tag: '退场',
-          time: '2025-11-10 14:20',
-          status: 'corrupted', // 逻辑4: 损坏状态
-          location: '质检部',
-          imgUrl: '/static/leaf.jpg',
-          selected: false
-        }
-      ]
+      listData: [],
+      stats: {
+        total: 0,
+        pending: 0,
+        success: 0,
+        corrupted: 0
+      },
+      isSelectMode: false,
+      showNetworkNotice: false,
+      uploadResult: null,
+      uploading: false
     };
   },
+  
   computed: {
     // 检查是否有选中的项
     hasSelectedItems() {
       return this.listData.some(item => item.selected);
+    },
+    // 是否有待上传的记录
+    hasPendingRecords() {
+      return this.stats.pending > 0;
     }
   },
+  
+  onLoad() {
+    this.loadCacheData();
+    this.checkNetworkStatus();
+  },
+  
+  onShow() {
+    // 页面显示时刷新数据
+    this.loadCacheData();
+    this.checkNetworkStatus();
+  },
   methods: {
+    // 加载缓存数据
+    loadCacheData() {
+      // 检查并修复损坏的记录
+      checkAndFixCorruptedRecords();
+      
+      // 获取所有记录
+      const records = getAllCacheRecords();
+      
+      // 转换为列表数据格式
+      this.listData = records
+        .filter(record => record.uploadStatus !== 'success') // 只显示未上传、失败、损坏的记录
+        .map(record => ({
+          id: record.id,
+          deviceName: record.deviceName || record.deviceNo || '未知设备',
+          tag: record.tag || '未知',
+          time: record.time || '',
+          status: record.uploadStatus === 'corrupted' ? 'corrupted' : 'normal',
+          location: record.address || '未知地址',
+          imgUrl: record.images && record.images.length > 0 ? record.images[0] : '/static/leaf.jpg',
+          selected: false,
+          rawData: record // 保存原始数据用于上传
+        }));
+      
+      // 更新统计数据
+      this.stats = getCacheStats();
+    },
+    
+    // 检测网络状态
+    async checkNetworkStatus() {
+      return new Promise((resolve) => {
+        uni.getNetworkType({
+          success: (res) => {
+            const isOnline = res.networkType !== 'none' && res.networkType !== 'unknown';
+            this.showNetworkNotice = isOnline && this.hasPendingRecords;
+            resolve(isOnline);
+          },
+          fail: () => {
+            this.showNetworkNotice = false;
+            resolve(false);
+          }
+        });
+      });
+    },
     
     // 单选切换
     toggleItemSelect(index) {
       this.listData[index].selected = !this.listData[index].selected;
     },
+    
     // 获取标签样式
     getTagClass(tag) {
       if (tag === '异常上报') return 'tag-red';
@@ -152,7 +196,7 @@ export default {
       return 'tag-blue'; // 默认退场
     },
     
-    // 逻辑3: 跳转详情页
+    // 跳转详情页
     goToDetail(item) {
       uni.navigateTo({
         url: `/pages/cacheDetail/cacheDetail?id=${item.id}`,
@@ -160,8 +204,9 @@ export default {
       });
     },
 
-    // 逻辑4: 处理损坏数据点击
+    // 处理损坏数据点击
     handleCorruptedClick(index) {
+      const item = this.listData[index];
       uni.showModal({
         title: '提示',
         content: '此条缓存数据已损坏，无法上传，请重新打卡',
@@ -170,29 +215,180 @@ export default {
         cancelText: '取消',
         success: (res) => {
           if (res.confirm) {
-            // 执行删除逻辑
-            this.listData.splice(index, 1);
-            uni.showToast({ title: '已删除', icon: '' });
+            const result = deleteCacheRecord(item.id);
+            if (result.success) {
+              this.loadCacheData(); // 重新加载数据
+              uni.showToast({ title: '已删除', icon: 'success' });
+            } else {
+              uni.showToast({ title: '删除失败', icon: 'none' });
+            }
           }
         }
       });
     },
 
     // 重新上传单个
-    reUploadOne(item) {
-      uni.showLoading({ title: '上传中...' });
-      setTimeout(() => uni.hideLoading(), 1000);
+    async reUploadOne(item) {
+      if (this.uploading) return;
+      
+      const isOnline = await this.checkNetworkStatus();
+      if (!isOnline) {
+        uni.showToast({
+          title: '当前无网络，无法上传',
+          icon: 'none'
+        });
+        return;
+      }
+      
+      await this.uploadRecords([item]);
     },
 
     // 上传全部
-    uploadAll() {
-      uni.showToast({ title: '开始上传全部...', icon: '' });
+    async uploadAll() {
+      if (this.uploading) return;
+      
+      const isOnline = await this.checkNetworkStatus();
+      if (!isOnline) {
+        uni.showToast({
+          title: '当前无网络，无法上传',
+          icon: 'none'
+        });
+        return;
+      }
+      
+      const pendingRecords = this.listData.filter(item => item.status !== 'corrupted');
+      if (pendingRecords.length === 0) {
+        uni.showToast({
+          title: '没有可上传的记录',
+          icon: 'none'
+        });
+        return;
+      }
+      
+      await this.uploadRecords(pendingRecords);
     },
 
-    // 逻辑1: 批量上传
-    uploadSelectedItems() {
-      const selectedIds = this.listData.filter(i => i.selected).map(i => i.id);
-      uni.showToast({ title: `正在重新上传 ${selectedIds.length} 条数据`, icon: 'none' });
+    // 批量上传选中项
+    async uploadSelectedItems() {
+      if (this.uploading) return;
+      
+      const selectedItems = this.listData.filter(item => item.selected && item.status !== 'corrupted');
+      if (selectedItems.length === 0) {
+        uni.showToast({
+          title: '请选择要上传的记录',
+          icon: 'none'
+        });
+        return;
+      }
+      
+      const isOnline = await this.checkNetworkStatus();
+      if (!isOnline) {
+        uni.showToast({
+          title: '当前无网络，无法上传',
+          icon: 'none'
+        });
+        return;
+      }
+      
+      await this.uploadRecords(selectedItems);
+    },
+    
+    // 上传记录（核心上传逻辑）
+    async uploadRecords(records) {
+      this.uploading = true;
+      uni.showLoading({
+        title: '上传中...',
+        mask: true
+      });
+      
+      let successCount = 0;
+      let failedCount = 0;
+      
+      for (const item of records) {
+        try {
+          const rawData = item.rawData;
+          if (!rawData || !rawData.data) {
+            markRecordUploaded(item.id, false, '数据格式错误');
+            failedCount++;
+            continue;
+          }
+          
+          // 解析提交数据
+          let submitData;
+          try {
+            submitData = JSON.parse(rawData.data);
+          } catch (e) {
+            markRecordUploaded(item.id, false, '数据解析失败');
+            failedCount++;
+            continue;
+          }
+          
+          // 如果有本地图片，先上传图片
+          if (rawData.images && rawData.images.length > 0 && !submitData.imgs) {
+            try {
+              const uploadPromises = rawData.images.map(filePath => {
+                return http.upload(filePath, {
+                  url: API_ENDPOINTS.UPLOAD_API,
+                  name: 'file',
+                  showLoading: false
+                }).catch(err => {
+                  console.error('图片上传失败:', err);
+                  return null;
+                });
+              });
+              
+              const results = await Promise.all(uploadPromises);
+              const successUrls = results.filter(url => url !== null);
+              submitData.imgs = successUrls.join(',');
+            } catch (imgError) {
+              console.error('图片上传失败:', imgError);
+              // 继续提交，但不包含图片
+            }
+          }
+          
+          // 提交数据
+          await http.post(API_ENDPOINTS.ATTENDANCE_ADD_API, submitData, {
+            header: {
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          // 标记为已上传
+          markRecordUploaded(item.id, true);
+          successCount++;
+          
+        } catch (error) {
+          console.error('上传失败:', error);
+          markRecordUploaded(item.id, false, error.message || '上传失败');
+          failedCount++;
+        }
+      }
+      
+      uni.hideLoading();
+      this.uploading = false;
+      
+      // 显示上传结果
+      this.uploadResult = {
+        total: records.length,
+        success: successCount,
+        failed: failedCount
+      };
+      
+      if (successCount > 0) {
+        uni.showToast({
+          title: `成功上传${successCount}条记录`,
+          icon: 'success'
+        });
+      }
+      
+      // 重新加载数据
+      this.loadCacheData();
+      this.checkNetworkStatus();
+    },
+    
+    // 清除上传结果
+    clearUploadResult() {
+      this.uploadResult = null;
     }
   }
 };
@@ -288,6 +484,28 @@ export default {
 	font-size: 40rpx;
 	color: #196AD4;
 	margin-bottom: 5rpx;
+}
+
+/* 网络提示条 */
+.network-notice {
+  margin: 20rpx 30rpx;
+  background: #FFF8E1;
+  border: 2rpx solid #FFC107;
+  border-radius: 16rpx;
+  padding: 20rpx 30rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 26rpx;
+  color: #F57C00;
+}
+
+.notice-upload-btn {
+  background: #FF9800;
+  color: #fff;
+  padding: 10rpx 30rpx;
+  border-radius: 30rpx;
+  font-size: 24rpx;
 }
 
 /* 列表卡片 */

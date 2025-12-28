@@ -97,6 +97,7 @@
 <script>
 import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
+import { saveCacheRecord } from '@/utils/offlineCache.js'
 
 //模拟设备编号
 const validDevices = ["DEV001", "DEV002", "DEV003"];
@@ -371,18 +372,32 @@ export default {
 	  return successUrls.join(',');
 	},
 	
+	// 检测网络状态
+	async checkNetworkStatus() {
+		return new Promise((resolve) => {
+			uni.getNetworkType({
+				success: (res) => {
+					resolve(res.networkType !== 'none' && res.networkType !== 'unknown')
+				},
+				fail: () => {
+					resolve(false)
+				}
+			})
+		})
+	},
+	
 	// 提交上报
 	async submit() {
 	  // 表单验证
-	  if (!this.shebie.trim()) {
-		this.errorShebie = "设备编号不能为空";
-		return;
-	  }
-	  
-	  if (!validDevices.includes(this.shebie)) {
-		this.errorShebie = "该设备编号不存在，请重新输入";
-		return;
-	  }
+		if (!this.shebie.trim()) {
+			this.errorShebie = "设备编号不能为空";
+			return;
+		  }
+		
+		  if (!validDevices.includes(this.shebie)) {
+			this.errorShebie = "该设备编号不存在，请重新输入";
+			return;
+		  }
 	  
 	  if (this.sele == "请选择设备类型") {
 		this.picker = "请选择设备类型";
@@ -429,34 +444,103 @@ export default {
 		// 1. 获取位置信息
 		await this.getLocation();
 		
-		// 2. 上传图片
-		const imgs = await this.uploadImages();
-		if (!imgs) {
-		  uni.hideLoading();
-		  uni.showToast({
-			title: "图片上传失败",
-			icon: "none"
-		  });
-		  this.submitting = false;
-		  return;
+		// 2. 上传图片（离线时也尝试上传，失败则在离线数据中保存图片路径）
+		let imgs = '';
+		try {
+			imgs = await this.uploadImages();
+			if (!imgs) {
+				console.warn('图片上传失败，将在离线数据中保存图片路径');
+			}
+		} catch (imgError) {
+			console.warn('图片上传失败，将在离线数据中保存图片路径', imgError);
 		}
 		
 		// 3. 确定类型：0进场 1离场
 		const type = this.sele === "进场" ? 0 : 1;
 		
-		// 4. 提交上报数据
+		// 4. 格式化时间
+		let timeStr = this.enterTime;
+		if (!timeStr.includes(':')) {
+			timeStr = timeStr + ' 00:00:00';
+		} else if (timeStr.split(':').length === 2) {
+			timeStr = timeStr + ':00';
+		}
+		
+		// 5. 构建提交数据
 		const submitData = {
- 
-		  deviceId: 365, // 这里可能需要根据设备编号获取实际设备ID
-		  type: type,
-		  address: this.address || "",
-		  lng: this.lng || "",
-		  lat: this.lat || "",
-		  imgs: imgs,
-		  remark: this.beizhu.trim(),
-		  time: this.enterTime+":00",
-		  status: 1 // 1异常（因为这是异常上报）
+			deviceId: 365, // 这里可能需要根据设备编号获取实际设备ID
+			type: type,
+			address: this.address || "",
+			lng: this.lng || "",
+			lat: this.lat || "",
+			imgs: imgs,
+			remark: this.beizhu.trim(),
+			time: timeStr,
+			status: 1 // 1异常（因为这是异常上报）
 		};
+		
+		// 6. 检测网络状态
+		const isOnline = await this.checkNetworkStatus();
+		
+		if (!isOnline) {
+			// 离线状态，保存到本地缓存
+			uni.hideLoading();
+			
+			const cacheData = {
+				type: 'report', // 异常上报类型
+				deviceNo: this.shebie,
+				deviceName: '', // 异常上报可能没有设备名称
+				tag: '异常上报',
+				time: timeStr,
+				address: this.address || "",
+				lng: this.lng || "",
+				lat: this.lat || "",
+				imgs: imgs || "",
+				images: this.images || [], // 保存本地图片路径
+				remark: this.beizhu.trim(),
+				status: 1, // 异常状态
+				data: JSON.stringify(submitData)
+			};
+			
+			const result = saveCacheRecord(cacheData);
+			
+			if (result.success) {
+				// 显示黄色提示
+				uni.showToast({
+					title: '当前无网络，数据已本地缓存',
+					icon: 'none',
+					duration: 3000,
+					mask: true
+				});
+				
+				// 延迟返回上一页
+				setTimeout(() => {
+					uni.navigateBack();
+				}, 1500);
+			} else {
+				// 存储失败（可能是空间不足）
+				uni.showModal({
+					title: '提示',
+					content: result.error || '缓存失败，请重试',
+					showCancel: false,
+					confirmText: '确定',
+					confirmColor: '#E02020'
+				});
+			}
+			this.submitting = false;
+			return;
+		}
+		
+		// 在线状态，正常提交
+		if (!imgs) {
+			uni.hideLoading();
+			uni.showToast({
+				title: "图片上传失败",
+				icon: "none"
+			});
+			this.submitting = false;
+			return;
+		}
 		
 		const result = await http.post(API_ENDPOINTS.ATTENDANCE_ADD_API, submitData, {
 		  header: {
@@ -478,10 +562,60 @@ export default {
 	  } catch (error) {
 		console.error('提交失败:', error);
 		uni.hideLoading();
-		uni.showToast({
-		  title: "提交失败，请重试",
-		  icon: "none"
-		});
+		
+		// 如果网络请求失败，尝试保存到离线缓存
+		try {
+			const timeStr = this.enterTime.split(':').length === 2 ? this.enterTime + ':00' : this.enterTime;
+			const type = this.sele === "进场" ? 0 : 1;
+			
+			const cacheData = {
+				type: 'report',
+				deviceNo: this.shebie,
+				deviceName: '',
+				tag: '异常上报',
+				time: timeStr,
+				address: this.address || "",
+				lng: this.lng || "",
+				lat: this.lat || "",
+				imgs: "",
+				images: this.images || [],
+				remark: this.beizhu.trim(),
+				status: 1,
+				data: JSON.stringify({
+					deviceId: 365,
+					type: type,
+					address: this.address || "",
+					lng: this.lng || "",
+					lat: this.lat || "",
+					imgs: "",
+					remark: this.beizhu.trim(),
+					time: timeStr,
+					status: 1
+				})
+			};
+			
+			const cacheResult = saveCacheRecord(cacheData);
+			if (cacheResult.success) {
+				uni.showToast({
+					title: '提交失败，数据已缓存',
+					icon: 'none',
+					duration: 3000
+				});
+				setTimeout(() => {
+					uni.navigateBack();
+				}, 1500);
+			} else {
+				uni.showToast({
+					title: "提交失败，请重试",
+					icon: "none"
+				});
+			}
+		} catch (cacheError) {
+			uni.showToast({
+				title: "提交失败，请重试",
+				icon: "none"
+			});
+		}
 	  } finally {
 		this.submitting = false;
 	  }

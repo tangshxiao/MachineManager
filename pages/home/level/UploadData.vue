@@ -101,6 +101,7 @@
 <script>
 import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
+import { saveCacheRecord } from '@/utils/offlineCache.js'
 
 export default {
 	  data() {
@@ -360,6 +361,21 @@ export default {
 			 return successUrls.join(',');
 		 },
 		 
+		 // 检测网络状态
+		 async checkNetworkStatus() {
+			 return new Promise((resolve) => {
+				 uni.getNetworkType({
+					 success: (res) => {
+						 // networkType: wifi/2g/3g/4g/5g/unknown/none
+						 resolve(res.networkType !== 'none' && res.networkType !== 'unknown')
+					 },
+					 fail: () => {
+						 resolve(false) // 获取失败时认为离线
+					 }
+				 })
+			 })
+		 },
+		 
 		 // 提交打卡
 		 async submitCheckIn() {
 			 // 表单验证
@@ -403,8 +419,13 @@ export default {
 				 // 1. 获取位置信息
 				 await this.getLocation();
 				 
-				 // 2. 上传图片
-				 const imgs = await this.uploadImages();
+				 // 2. 上传图片（离线时也上传，如果失败则在离线数据中保存图片路径）
+				 let imgs = '';
+				 try {
+					 imgs = await this.uploadImages();
+				 } catch (imgError) {
+					 console.warn('图片上传失败，将在离线数据中保存图片路径', imgError);
+				 }
 				 
 				 // 3. 确定类型：0进场 1离场
 				 const type = this.message === "进场" ? 0 : 1;
@@ -417,7 +438,7 @@ export default {
 					 timeStr = timeStr + ':00';
 				 }
 				 
-				 // 5. 提交打卡数据
+				 // 5. 构建提交数据
 				 const submitData = {
 					 deviceId: this.deviceId,
 					 type: type,
@@ -430,6 +451,59 @@ export default {
 					 status: 0 // 0正常 1异常
 				 };
 				 
+				 // 6. 检测网络状态
+				 const isOnline = await this.checkNetworkStatus();
+				 
+				 if (!isOnline) {
+					 // 离线状态，保存到本地缓存
+					 uni.hideLoading();
+					 
+					 const cacheData = {
+						 type: 'attendance', // 打卡类型
+						 deviceId: this.deviceId,
+						 deviceNo: this.shebei,
+						 deviceName: this.shengchan,
+						 tag: this.message === '进场' ? '进场' : '退场',
+						 time: timeStr,
+						 address: this.address || "",
+						 lng: this.lng || "",
+						 lat: this.lat || "",
+						 imgs: imgs || "",
+						 images: this.images || [], // 保存本地图片路径
+						 remark: "",
+						 status: 0,
+						 data: JSON.stringify(submitData) // 保存完整提交数据
+					 };
+					 
+					 const result = saveCacheRecord(cacheData);
+					 
+					 if (result.success) {
+						 // 显示黄色提示
+						 uni.showToast({
+							 title: '当前无网络，数据已本地缓存',
+							 icon: 'none',
+							 duration: 3000,
+							 mask: true
+						 });
+						 
+						 // 延迟返回上一页
+						 setTimeout(() => {
+							 uni.navigateBack();
+						 }, 1500);
+					 } else {
+						 // 存储失败（可能是空间不足）
+						 uni.showModal({
+							 title: '提示',
+							 content: result.error || '缓存失败，请重试',
+							 showCancel: false,
+							 confirmText: '确定',
+							 confirmColor: '#E02020'
+						 });
+					 }
+					 return;
+				 }
+				 
+				 // 在线状态，正常提交
 				 const result = await http.post(API_ENDPOINTS.ATTENDANCE_ADD_API, submitData, {
 					 header: {
 						 'Content-Type': 'application/json'
@@ -450,10 +524,58 @@ export default {
 			 } catch (error) {
 				 console.error('提交打卡失败:', error);
 				 uni.hideLoading();
-				 uni.showToast({
-					 title: "提交失败，请重试",
-					 icon: "none"
-				 });
+				 
+				 // 如果网络请求失败，尝试保存到离线缓存
+				 try {
+					 const cacheData = {
+						 type: 'attendance',
+						 deviceId: this.deviceId,
+						 deviceNo: this.shebei,
+						 deviceName: this.shengchan,
+						 tag: this.message === '进场' ? '进场' : '退场',
+						 time: this.enterTime,
+						 address: this.address || "",
+						 lng: this.lng || "",
+						 lat: this.lat || "",
+						 imgs: "",
+						 images: this.images || [],
+						 remark: "",
+						 status: 0,
+						 data: JSON.stringify({
+							 deviceId: this.deviceId,
+							 type: this.message === "进场" ? 0 : 1,
+							 address: this.address || "",
+							 lng: this.lng || "",
+							 lat: this.lat || "",
+							 imgs: "",
+							 remark: "",
+							 time: this.enterTime,
+							 status: 0
+						 })
+					 };
+					 
+					 const cacheResult = saveCacheRecord(cacheData);
+					 if (cacheResult.success) {
+						 uni.showToast({
+							 title: '提交失败，数据已缓存',
+							 icon: 'none',
+							 duration: 3000
+						 });
+						 setTimeout(() => {
+							 uni.navigateBack();
+						 }, 1500);
+					 } else {
+						 uni.showToast({
+							 title: "提交失败，请重试",
+							 icon: "none"
+						 });
+					 }
+				 } catch (cacheError) {
+					 uni.showToast({
+						 title: "提交失败，请重试",
+						 icon: "none"
+					 });
+				 }
 			 } finally {
 				 this.submitting = false;
 			 }
