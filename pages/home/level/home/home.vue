@@ -155,6 +155,11 @@
       // 读取后可以清空，避免重复使用
       // uni.removeStorageSync('selectedProjectIds')
     }
+    // 刷新打卡记录和设备列表（重置到第一页，确保显示最新数据）
+    this.attendanceCurrent = 1
+    this.deviceCurrent = 1
+    this.loadAttendanceList()
+    this.loadDeviceList()
   },
 
   methods: {

@@ -27,9 +27,12 @@
 				</view>
 			</view>
 			<view class="Content-text">打卡类型:
-				<view class="Content-text-left-a">
-					{{message}}
-				</view>
+				<picker class="Content-picker" mode="selector" :range="checkInTypes" @change="onCheckInTypeChange">
+					<view class="Content-picker-sele" style="display:flex;justify-content:space-between;align-items:center;width:100%;">
+						<view class="Content-text-left-a">{{message}}</view>
+						<image src="/static/icon_jt_xx.png" style="width:32rpx; height: 32rpx;flex-shrink:0;margin-right:16rpx;"></image>
+					</view>
+				</picker>
 			</view>
 			<view class="Content-text">
 				当前时间:<view class="Content-text-left">
@@ -87,6 +90,7 @@
 				class="Content-btn-right" 
 				hover-class="btn-right-hover"
 				hover-stay-time="100"
+				@click="submitCheckIn"
 			>
 				确认打卡
 			</button>
@@ -95,6 +99,8 @@
 </view>
 </template>
 <script>
+import http from '@/utils/request.js'
+import API_ENDPOINTS from '@/config/api.js'
 
 export default {
 	  data() {
@@ -102,9 +108,18 @@ export default {
 			shebei:"DEVOOOO3",
 			shengchan:"生产线B设备",
 			message: "进场",
+			checkInTypes: ["进场", "出场"],
 			enterTime:"",
 			person:"老周",
 			images:[],
+			// 打卡相关字段
+			deviceId: 0,
+			// 位置信息
+			address: "",
+			lng: "",
+			lat: "",
+			// 提交状态
+			submitting: false,
 	    }
 	  },
 
@@ -172,6 +187,11 @@ export default {
 	  		},
 	  
 	 methods: {
+		 // 打卡类型选择变化
+		 onCheckInTypeChange(e) {
+			 const index = e.detail.value;
+			 this.message = this.checkInTypes[index];
+		 },
 		 handleScanData(jsonStr) {
 		 				try {
 		 					// 将 JSON 字符串转换为对象
@@ -187,8 +207,10 @@ export default {
 		 						this.shengchan = data.name;
 		 					}
 		 					
-		 					// 3. (可选) 可以在这里把 id 存起来，之后提交用
-		 					// this.deviceId = data.id; 
+		 					// 3. 保存设备ID，用于提交打卡
+		 					if (data.id) {
+		 						this.deviceId = data.id;
+		 					}
 		 
 		 					uni.showToast({
 		 						title: '扫码数据加载成功',
@@ -203,6 +225,7 @@ export default {
 		 					});
 		 					// 容错：如果不是JSON，直接显示原始字符串
 		 					this.shebei = jsonStr;
+		 					this.deviceId = 0;
 		 				}
 		 			},
 		 
@@ -277,6 +300,163 @@ export default {
 		 	  urls: this.images,
 		 	  current: this.images[index],
 		 	});
+		 },
+		 
+		 // 获取位置信息
+		 async getLocation() {
+			 return new Promise((resolve, reject) => {
+				 uni.getLocation({
+					 type: 'gcj02',
+					 success: (res) => {
+						 this.lng = String(res.longitude);
+						 this.lat = String(res.latitude);
+						 
+						 // 逆地理编码获取地址
+						 uni.request({
+							 url: `https://apis.map.qq.com/ws/geocoder/v1/?location=${res.latitude},${res.longitude}&key=OB4BZ-D4W3U-B7VVO-4PJWW-6TKDJ-WPB77&get_poi=1`,
+							 success: (addrRes) => {
+								 if (addrRes.data && addrRes.data.result) {
+									 this.address = addrRes.data.result.address || '';
+								 }
+								 resolve({ lng: this.lng, lat: this.lat, address: this.address });
+							 },
+							 fail: () => {
+								 this.address = '';
+								 resolve({ lng: this.lng, lat: this.lat, address: '' });
+							 }
+						 });
+					 },
+					 fail: (err) => {
+						 console.error('获取位置失败:', err);
+						 this.lng = '';
+						 this.lat = '';
+						 this.address = '';
+						 resolve({ lng: '', lat: '', address: '' });
+					 }
+				 });
+			 });
+		 },
+		 
+		 // 上传图片
+		 async uploadImages() {
+			 if (!this.images || this.images.length === 0) {
+				 return '';
+			 }
+			 
+			 const uploadPromises = this.images.map(filePath => {
+				 return http.upload(filePath, {
+					 url: API_ENDPOINTS.UPLOAD_API,
+					 name: 'file',
+					 showLoading: false
+				 }).catch(err => {
+					 console.error('图片上传失败:', err);
+					 return null;
+				 });
+			 });
+			 
+			 const results = await Promise.all(uploadPromises);
+			 // 过滤掉上传失败的，并用逗号连接
+			 const successUrls = results.filter(url => url !== null);
+			 return successUrls.join(',');
+		 },
+		 
+		 // 提交打卡
+		 async submitCheckIn() {
+			 // 表单验证
+			 if (!this.deviceId || this.deviceId === 0) {
+				 uni.showToast({
+					 title: '请先扫码获取设备信息',
+					 icon: 'none'
+				 });
+				 return;
+			 }
+			 
+			 if (!this.message || (this.message !== '进场' && this.message !== '出场')) {
+				 uni.showToast({
+					 title: '请选择打卡类型',
+					 icon: 'none'
+				 });
+				 return;
+			 }
+			 
+			 if (!this.enterTime) {
+				 uni.showToast({
+					 title: '时间信息错误',
+					 icon: 'none'
+				 });
+				 return;
+			 }
+			 
+			 // 防止重复提交
+			 if (this.submitting) {
+				 return;
+			 }
+			 
+			 this.submitting = true;
+			 
+			 try {
+				 uni.showLoading({
+					 title: '提交中...',
+					 mask: true
+				 });
+				 
+				 // 1. 获取位置信息
+				 await this.getLocation();
+				 
+				 // 2. 上传图片
+				 const imgs = await this.uploadImages();
+				 
+				 // 3. 确定类型：0进场 1离场
+				 const type = this.message === "进场" ? 0 : 1;
+				 
+				 // 4. 格式化时间，确保格式为 YYYY-MM-DD HH:mm:ss
+				 let timeStr = this.enterTime;
+				 if (!timeStr.includes(':')) {
+					 timeStr = timeStr + ' 00:00:00';
+				 } else if (timeStr.split(':').length === 2) {
+					 timeStr = timeStr + ':00';
+				 }
+				 
+				 // 5. 提交打卡数据
+				 const submitData = {
+					 deviceId: this.deviceId,
+					 type: type,
+					 address: this.address || "",
+					 lng: this.lng || "",
+					 lat: this.lat || "",
+					 imgs: imgs || "",
+					 remark: "",
+					 time: timeStr,
+					 status: 0 // 0正常 1异常
+				 };
+				 
+				 const result = await http.post(API_ENDPOINTS.ATTENDANCE_ADD_API, submitData, {
+					 header: {
+						 'Content-Type': 'application/json'
+					 }
+				 });
+				 
+				 uni.hideLoading();
+				 uni.showToast({
+					 title: "打卡成功",
+					 icon: "success"
+				 });
+				 
+				 // 提交成功后，延迟返回上一页
+				 setTimeout(() => {
+					 uni.navigateBack();
+				 }, 1500);
+				 
+			 } catch (error) {
+				 console.error('提交打卡失败:', error);
+				 uni.hideLoading();
+				 uni.showToast({
+					 title: "提交失败，请重试",
+					 icon: "none"
+				 });
+			 } finally {
+				 this.submitting = false;
+			 }
 		 }
 	   },
 	   
@@ -322,7 +502,7 @@ export default {
 		padding-left: 30rpx;
 		padding-bottom: 50rpx;
 		padding-right: 30rpx;
-		height: 774rpx;
+		min-height: 774rpx;
 		position: relative;
 		background-color: #ffffff;
 		z-index: 10;
@@ -361,6 +541,7 @@ export default {
 
 	.Content-text {
 		display: flex;
+		align-items: center;
 		padding: 20rpx 0;
 		border-radius: 10rpx;
 		}
@@ -369,6 +550,24 @@ export default {
 	}
 	.Content-text-left-a{
 		padding: 0 10rpx;
+		color: #50B0F9;
+		font-weight: bold;
+	}
+	.Content-picker{
+		flex: 1;
+		height: 90rpx;
+		display: flex;
+		align-items: center;
+		padding: 0 0 0 10rpx;
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		margin-left: 20rpx;
+	}
+	.Content-picker-sele{
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		width: 100%;
 		color: #50B0F9;
 		font-weight: bold;
 	}
