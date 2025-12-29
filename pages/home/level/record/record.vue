@@ -40,7 +40,7 @@
         <view class="divider"></view>
 
         <view class="card-footer">
-          <button class="detail-btn" hover-class="btn-hover">查看详情</button>
+          <button class="detail-btn" hover-class="btn-hover" @click="Details(item)">查看详情</button>
         </view>
       </view>
       
@@ -81,6 +81,7 @@ export default {
       loadMoreTimer: null // 防抖定时器
     }
   },
+  
   onLoad() {
     this.loadAttendanceList(true)
   },
@@ -93,6 +94,14 @@ export default {
     this.onLoadMore()
   },
   methods: {
+	  
+	  Details(item) {
+	    // 携带 id 参数跳转（如果你的唯一标识字段不是 id，请替换 item.id 为 item.xxx）
+	    uni.navigateTo({
+	      url: `/pages/home/level/record/device-detail/device-detail?id=${item.id}`
+	    });
+	  },
+	  
     // 加载打卡记录列表
     async loadAttendanceList(reset = false) {
       if (this.loading) return

@@ -111,6 +111,13 @@
 				"navigationBarTitleText": "网络请求日志",
 				"navigationBarTextStyle": "white"
 			}
+		},
+		{
+			"path": "pages/home/level/record/device-detail/device-detail",
+			"style": {
+				"navigationBarTitleText": "页面详情",
+				"navigationBarTextStyle": "white"
+			}
 		}
 		
 	

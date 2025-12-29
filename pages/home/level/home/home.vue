@@ -26,7 +26,7 @@
 							我的设备
 						</view>
 					</view>
-					<view class="user-card-Function-imga">
+					<view class="user-card-Function-imga"  @click="Offline">
 						<image src="/imgs/shouyetu3.png" alt="" />
 						<view class="user-card-Function-text">
 							离线存储
@@ -266,6 +266,11 @@
 	  uni.navigateTo({
 	    url: '/pages/home/level/Devices/Devices'
 	  });
+	},
+	Offline(){
+		uni.navigateTo({
+		  url: '/pages/home/level/Offline/Offline'
+		});
 	}
   }
 }
