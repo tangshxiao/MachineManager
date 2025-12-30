@@ -2,7 +2,7 @@
     "name" : "机具",
     "appid" : "__UNI__620D8F3",
     "description" : "",
-    "versionName" : "1.0.0",
+    "versionName" : "1.0.2",
     "versionCode" : "100",
     "transformPx" : false,
     /* 5+App特有相关 */
@@ -40,7 +40,8 @@
                     "<uses-permission android:name=\"android.permission.WRITE_SETTINGS\"/>",
                     "<uses-permission android:name=\"android.permission.WRITE_EXTERNAL_STORAGE\"/>",
                     "<uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\"/>"
-                ]
+                ],
+                "abiFilters" : [ "armeabi-v7a", "arm64-v8a" ]
             },
             /* ios打包配置 */
             "ios" : {
@@ -76,14 +77,11 @@
     "uniStatistics" : {
         "enable" : false
     },
-	"app-harmony": {
-		"projectPath": "E:/project/CompanyProject/package"
-	},
-    "vueVersion" : "3",
-    "locale" : "zh-Hans",
     "app-harmony" : {
         "distribute" : {
             "bundleName" : "com.byzx.jjobject"
         }
-    }
+    },
+    "vueVersion" : "3",
+    "locale" : "zh-Hans"
 }
