@@ -79,7 +79,18 @@
     },
     "app-harmony" : {
         "distribute" : {
-            "bundleName" : "com.byzx.jjobject"
+            "bundleName" : "com.byzx.jjxm",
+            "signingConfigs" : {
+                "default" : {
+                    "certpath" : "c:\\Users\\10731\\AppData\\Roaming\\HBuilder X\\extensions\\launcher\\agc-certs\\1767013079659.cer",
+                    "keyAlias" : "debugKey",
+                    "keyPassword" : "0000001AAAFF41B47D7A88A60D4DEF100E8E14CEFCD62D75FE9164E111B98B0517A46F52A1F4D82481C3",
+                    "profile" : "c:\\Users\\10731\\AppData\\Roaming\\HBuilder X\\extensions\\launcher\\agc-certs\\1767013079659.p7b",
+                    "signAlg" : "SHA256withECDSA",
+                    "storeFile" : "c:\\Users\\10731\\AppData\\Roaming\\HBuilder X\\extensions\\launcher\\agc-certs\\1767013079659.p12",
+                    "storePassword" : "0000001AAAFF41B47D7A88A60D4DEF100E8E14CEFCD62D75FE9164E111B98B0517A46F52A1F4D82481C3"
+                }
+            }
         }
     },
     "vueVersion" : "3",

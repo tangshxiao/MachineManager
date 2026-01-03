@@ -4,16 +4,16 @@
       <view class="device-card">
         <view class="dc-row-top">
           <view class="dc-info">
-            <text class="dc-code">{{ deviceInfo.deviceNo || 'EQ-xxxx-xxxx' }}</text>
-            <text class="dc-name">{{ deviceInfo.deviceName || '设备名称' }}</text>
+            <text class="dc-code-name">{{ deviceInfo.deviceNo || 'EQ-xxxx-xxxx' }} {{ deviceInfo.name || deviceInfo.deviceName || '设备名称' }}</text>
           </view>
-          <view class="dc-status" :class="deviceInfo.status === 1 ? 'status-normal' : 'status-abnormal'">
-            <text>{{ deviceInfo.status === 1 ? '正常' : '异常' }}</text>
+          <view class="dc-status" :class="getStatusClass(deviceInfo.status)">
+            <text>{{ getStatusText(deviceInfo.status) }}</text>
           </view>
         </view>
         <view class="dc-row-bottom">
-          <text class="dc-time-label">&#x101eb;最后打卡时间：</text>
-          <text class="dc-time-value">{{ deviceInfo.lastTime || '--' }}</text>
+          <image src="/static/icon_time_img.png" class="time-icon"></image>
+          <text class="dc-time-label">最后打卡时间：</text>
+          <text class="dc-time-value">{{ formatTime(deviceInfo.lastTime) || '--' }}</text>
         </view>
       </view>
     </view>
@@ -27,6 +27,10 @@
       </view>
 
       <view class="record-list">
+        <!-- 加载状态 -->
+        <view v-if="loading && list.length === 0" class="loading-box">
+          <text class="loading-text">加载中...</text>
+        </view>
         
         <view v-if="!loading && list.length === 0" class="empty-box">
           <image src="/static/empty.png" mode="aspectFit" class="empty-img"></image>
@@ -34,23 +38,32 @@
         </view>
 
         <view class="record-item" v-for="(item, index) in list" :key="index">
-          <view class="ri-header">
-            <view class="user-info">
-              <text class="user-name">{{ item.userName }}</text>
-              <text class="record-time">{{ item.createTime }}</text>
+          <view class="ri-content">
+            <view class="ri-left">
+              <view class="user-info">
+                <text class="user-name">{{ item.userName }}</text>
+                <text class="record-time">{{ formatTime(item.createTime || item.time) }}</text>
+              </view>
             </view>
-            <view class="type-tag" :class="item.type === 0 ? 'tag-in' : 'tag-out'">
-              <text>{{ item.type === 0 ? '进场' : '离场' }}</text>
+            
+            <view class="ri-right">
+              <view class="type-tag" :class="item.type === 0 ? 'tag-in' : 'tag-out'">
+                <text>{{ item.type === 0 ? '进场' : '离场' }}</text>
+              </view>
             </view>
           </view>
-
-          <view class="ri-media" v-if="item.imgUrl">
-            <image 
-              :src="item.imgUrl" 
-              mode="aspectFill" 
-              class="site-img"
-              @tap="previewImage(item.imgUrl)"
-            ></image>
+          
+          <view class="ri-middle" v-if="getImageList(item.imgs || item.imgUrl).length > 0">
+            <view class="images-container">
+              <image 
+                v-for="(img, imgIndex) in getImageList(item.imgs || item.imgUrl)" 
+                :key="imgIndex"
+                class="site-img"
+                :src="img" 
+                mode="aspectFill"
+                @tap="previewImages(item.imgs || item.imgUrl, imgIndex)"
+              ></image>
+            </view>
           </view>
 
           <view class="ri-location" v-if="item.address">
@@ -60,7 +73,7 @@
         </view>
         
         <view class="loading-more" v-if="list.length > 0">
-           <text class="loading-text">{{ loading ? '加载中...' : '没有更多数据了' }}</text>
+           <text class="loading-text">{{ loading ? '加载中...' : (hasMore ? '上拉加载更多' : '没有更多数据了') }}</text>
         </view>
 
       </view>
@@ -79,43 +92,49 @@ export default {
       deviceNo: '',
       loading: false,
       deviceInfo: {
+        id: '',
+        name: '',
         deviceNo: '',
-        deviceName: '挖掘机',
-        lastTime: '2025-11-10 14:20',
-        status: 1
+        type: 0,
+        model: '',
+        attr: '',
+        factory: '',
+        productTime: '',
+        buyTime: '',
+        warrantyStartTime: '',
+        warrantyEndTime: '',
+        address: '',
+        driver: '',
+        qrStatus: 0,
+        directorName: '',
+        phone: '',
+        remark: '',
+        lastTime: '',
+        companyName: '',
+        verifyStatus: 0,
+        status: 0
       },
       query: {
         current: 1,
         size: 10
       },
-      list: [
-        {
-          id: 1,
-          userName: '老周',
-          createTime: '2025-11-10 14:20',
-          type: 0, // 0进场
-          imgUrl: 'https://via.placeholder.com/300x300/409EFF/ffffff?text=Site+Image', // 替换为真实图片
-          address: '工作A区'
-        },
-        {
-          id: 2,
-          userName: '老周',
-          createTime: '2025-11-10 10:00',
-          type: 0, 
-          imgUrl: 'https://via.placeholder.com/300x300/67C23A/ffffff?text=Leaf',
-          address: '工作A区'
-        }
-      ]
+      list: [],
+      hasMore: true
     }
   },
   onLoad(options) {
-
-    if (options.id || options.deviceNo) {
+    if (options.id) {
       this.deviceId = options.id
-      this.deviceNo = options.deviceNo
-      
       this.getDeviceInfo()
-      this.getHistoryList(true)
+      // 注意：历史记录会在 getDeviceInfo 成功后自动调用
+    } else {
+      uni.showToast({
+        title: '缺少设备ID参数',
+        icon: 'none'
+      })
+      setTimeout(() => {
+        uni.navigateBack()
+      }, 1500)
     }
   },
 
@@ -125,45 +144,204 @@ export default {
   },
 
   onReachBottom() {
-
-    // this.query.current++
-    // this.getHistoryList()
+    // 上拉加载更多历史记录
+    if (!this.loading && this.hasMore && this.list.length > 0) {
+      this.query.current++
+      this.getHistoryList(false)
+    }
   },
   methods: {
-
+    // 获取设备详情
     async getDeviceInfo() {
-
-      // const res = await http.get(`/api/device/${this.deviceId}`)
-      // this.deviceInfo = res.data
+      if (!this.deviceId) {
+        return
+      }
       
-
-      uni.setNavigationBarTitle({
-        title: '设备详情'
-      })
+      try {
+        // 使用 POST 方式，Content-Type 为 application/x-www-form-urlencoded
+        // http.post 默认会显示 loading，所以不需要手动设置 loading 状态
+        const res = await http.post(API_ENDPOINTS.DEVICE_DETAILS_API, {
+          id: this.deviceId
+        }, {
+          header: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
+        })
+        
+        if (res) {
+          this.deviceInfo = {
+            id: res.id || '',
+            name: res.name || '',
+            deviceNo: res.deviceNo || '',
+            type: res.type !== undefined ? res.type : 0,
+            model: res.model || '',
+            attr: res.attr || '',
+            factory: res.factory || '',
+            productTime: res.productTime || '',
+            buyTime: res.buyTime || '',
+            warrantyStartTime: res.warrantyStartTime || '',
+            warrantyEndTime: res.warrantyEndTime || '',
+            address: res.address || '',
+            driver: res.driver || '',
+            qrStatus: res.qrStatus !== undefined ? res.qrStatus : 0,
+            directorName: res.directorName || '',
+            phone: res.phone || '',
+            remark: res.remark || '',
+            lastTime: res.lastTime || '',
+            companyName: res.companyName || '',
+            verifyStatus: res.verifyStatus !== undefined ? res.verifyStatus : 0,
+            status: res.status !== undefined ? res.status : 0
+          }
+          
+          // 如果deviceId还没有设置，使用返回的id
+          if (!this.deviceId && this.deviceInfo.id) {
+            this.deviceId = this.deviceInfo.id
+          }
+          
+          // 设置导航栏标题
+          uni.setNavigationBarTitle({
+            title: this.deviceInfo.name || '设备详情'
+          })
+          
+          // 获取设备详情后，获取历史记录
+          this.getHistoryList(true)
+        }
+      } catch (e) {
+        console.error('获取设备详情失败:', e)
+        uni.showToast({
+          title: '获取设备详情失败',
+          icon: 'none'
+        })
+      } finally {
+        uni.stopPullDownRefresh()
+      }
+    },
+    
+    // 获取状态文本
+    getStatusText(status) {
+      // status: 0正常 1警告 2故障
+      const statusMap = {
+        0: '正常',
+        1: '警告',
+        2: '故障'
+      }
+      return statusMap[status] || '未知'
+    },
+    
+    // 获取状态样式类
+    getStatusClass(status) {
+      // status: 0正常 1警告 2故障
+      if (status === 0) return 'status-normal'
+      if (status === 1) return 'status-warning'
+      if (status === 2) return 'status-abnormal'
+      return 'status-normal'
+    },
+    
+    // 格式化时间
+    formatTime(timeStr) {
+      if (!timeStr) return '--'
+      // 如果是完整的日期时间字符串，只显示日期和时间部分
+      const date = new Date(timeStr)
+      if (isNaN(date.getTime())) return timeStr
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      return `${year}-${month}-${day} ${hours}:${minutes}`
     },
 
 
     async getHistoryList(reset = false) {
-      if(reset) {
-        this.query.current = 1
-        this.loading = true
+      // 使用设备详情返回的id作为deviceId
+      const deviceId = this.deviceInfo.id || this.deviceId
+      if (!deviceId) {
+        console.warn('设备ID不存在，无法获取历史记录')
+        return
       }
-
-      // const res = await http.post(API_ENDPOINTS.HISTORY_API, { ...this.query, deviceId: this.deviceId })
-      // if (reset) this.list = res.records
-      // else this.list = [...this.list, ...res.records]
       
-      setTimeout(() => {
+      if (reset) {
+        this.query.current = 1
+        this.list = []
+        this.hasMore = true
+      }
+      
+      // 防止重复请求
+      if (this.loading) {
+        return
+      }
+      
+      this.loading = true
+      
+      try {
+        const res = await http.post(API_ENDPOINTS.ATTENDANCE_LIST_API, {
+          deviceId: deviceId,
+          current: this.query.current,
+          size: this.query.size
+        })
+        
+        const records = (res && res.records) || []
+        
+        if (reset) {
+          this.list = records
+        } else {
+          this.list = [...this.list, ...records]
+        }
+        
+        // 更新分页信息
+        if (res.current) {
+          this.query.current = res.current
+        }
+        if (res.size) {
+          this.query.size = res.size
+        }
+        
+        // 判断是否还有更多数据
+        const total = res.total || 0
+        this.hasMore = this.list.length < total && records.length >= this.query.size
+        
+        // 如果没有更多数据，可以在这里处理（可选）
+        if (!this.hasMore && this.list.length > 0) {
+          console.log('已加载全部数据')
+        }
+      } catch (e) {
+        console.error('获取历史记录失败:', e)
+        if (reset) {
+          uni.showToast({
+            title: '获取历史记录失败',
+            icon: 'none'
+          })
+        }
+      } finally {
         this.loading = false
         uni.stopPullDownRefresh()
-      }, 500)
+      }
     },
 
 
-    previewImage(url) {
-      uni.previewImage({
-        urls: [url]
-      })
+    // 获取图片列表
+    getImageList(imgs) {
+      if (!imgs) return []
+      // 如果是字符串，可能是逗号分隔的多个URL
+      if (typeof imgs === 'string') {
+        return imgs.split(',').map(img => img.trim()).filter(img => img)
+      }
+      // 如果是数组，直接返回
+      if (Array.isArray(imgs)) {
+        return imgs.filter(img => img)
+      }
+      return []
+    },
+    
+    // 预览图片
+    previewImages(imgs, currentIndex) {
+      const imgList = this.getImageList(imgs)
+      if (imgList.length > 0) {
+        uni.previewImage({
+          urls: imgList,
+          current: currentIndex
+        })
+      }
     },
 
 
@@ -203,52 +381,49 @@ page {
 }
 
 .device-card {
-  background-color: #EFFFF5;
+  background-color: #fff;
   border-radius: 16rpx;
   padding: 30rpx;
-  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.02);
 }
 
 .dc-row-top {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   margin-bottom: 24rpx;
 }
 
 .dc-info {
-  display: flex;
-  flex-direction: column;
+  flex: 1;
 }
 
-.dc-code {
-  font-size: 34rpx;
-  font-weight: bold;
+.dc-code-name {
+  font-size: 32rpx;
+  font-weight: 500;
   color: #333;
-  margin-bottom: 8rpx;
-  font-family: monospace; 
+  line-height: 1.4;
 }
-
-.dc-name {
-  font-size: 28rpx;
-  color: #666;
-}
-
 
 .dc-status {
-  padding: 6rpx 20rpx;
-  border-radius: 30rpx;
+  padding: 8rpx 24rpx;
+  border-radius: 40rpx;
   font-size: 24rpx;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .status-normal {
-  background-color: #19BE6B;
+  background-color: #39CCA6;
+  color: #fff;
+}
+
+.status-warning {
+  background-color: #FFB138;
   color: #fff;
 }
 
 .status-abnormal {
-  background-color: #FF9900;
+  background-color: #E55762;
   color: #fff;
 }
 
@@ -259,10 +434,18 @@ page {
   color: #999;
 }
 
+.time-icon {
+  width: 22rpx;
+  height: 22rpx;
+  margin-right: 8rpx;
+}
+
 .dc-time-label {
-  margin-right: 10rpx;
-  font-family: 'iconfont'; 
-  
+  margin-right: 8rpx;
+}
+
+.dc-time-value {
+  color: #666;
 }
 
 
@@ -301,14 +484,17 @@ page {
   border-radius: 16rpx;
   padding: 24rpx;
   margin-bottom: 20rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.03);
 }
 
-.ri-header {
+.ri-content {
   display: flex;
-  justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 20rpx;
+  margin-bottom: 16rpx;
+}
+
+.ri-left {
+  flex: 1;
+  min-width: 0;
 }
 
 .user-info {
@@ -318,9 +504,9 @@ page {
 
 .user-name {
   font-size: 30rpx;
-  font-weight: bold;
+  font-weight: 500;
   color: #333;
-  margin-bottom: 6rpx;
+  margin-bottom: 8rpx;
 }
 
 .record-time {
@@ -328,10 +514,38 @@ page {
   color: #999;
 }
 
+.ri-middle {
+  width: 100%;
+  margin-bottom: 16rpx;
+}
+
+.images-container {
+  display: flex;
+  flex-wrap: wrap;
+  margin-right: -12rpx;
+}
+
+.site-img {
+  width: calc(33.333% - 12rpx);
+  height: 200rpx;
+  border-radius: 8rpx;
+  background-color: #eee;
+  margin-right: 12rpx;
+  margin-bottom: 12rpx;
+  flex-shrink: 0;
+}
+
+.ri-right {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+}
+
 .type-tag {
-  padding: 6rpx 24rpx;
-  border-radius: 30rpx;
+  padding: 8rpx 24rpx;
+  border-radius: 40rpx;
   font-size: 24rpx;
+  white-space: nowrap;
 }
 
 .tag-in {
@@ -344,19 +558,6 @@ page {
   color: #fff;
 }
 
-
-.ri-media {
-  margin-bottom: 16rpx;
-}
-
-.site-img {
-  width: 200rpx;
-  height: 200rpx;
-  border-radius: 12rpx;
-  background-color: #eee;
-}
-
-
 .ri-location {
   display: flex;
   justify-content: flex-end; 
@@ -364,7 +565,7 @@ page {
 }
 
 .loc-icon {
-  font-size: 28rpx;
+  font-size: 24rpx;
   color: #999;
   margin-right: 6rpx;
 }
@@ -374,6 +575,13 @@ page {
   color: #999;
 }
 
+
+.loading-box {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60rpx 0;
+}
 
 .empty-box {
   display: flex;

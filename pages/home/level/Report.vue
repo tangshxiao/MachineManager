@@ -99,30 +99,30 @@ import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
 import { saveCacheRecord } from '@/utils/offlineCache.js'
 
-//模拟设备编号
+	//模拟设备编号
 const validDevices = ["DEV001", "DEV002", "DEV003"];
 
 export default {
   data() {
-    return {
-      shebie: "",
-      equipment: ["进场", "出场"],
-      sele: "请选择设备类型",
-      beizhu: "",
-      count: 0,
-      enterTime: "",
+	return {
+	  shebie: "",
+	  equipment: ["进场", "出场"],
+	  sele: "请选择设备类型",
+	  beizhu: "",
+	  count: 0,
+	  enterTime: "",
       dateTimeArray: [],
       dateTimeIndex: [0, 0, 0, 0, 0],
-      errorShebie: "",
-      picker:"",
-      images: [],
+	  errorShebie: "",
+	  picker:"",
+	  images: [],
       // 位置信息
       address: "",
       lng: "",
       lat: "",
       // 提交状态
       submitting: false,
-    };
+	};
   },
   mounted() {
     // 组件挂载时初始化日期时间选择器
@@ -130,10 +130,10 @@ export default {
     this.getEnterTime();
   },
   methods: {
-    openchange(e) {
-      const index = e.detail.value;
-      this.sele = this.equipment[index];
-    },
+	openchange(e) {
+	  const index = e.detail.value;
+	  this.sele = this.equipment[index];
+	},
     // 生成天数数组（根据年月）
     generateDaysArray(year, month) {
       const days = [];
@@ -195,16 +195,16 @@ export default {
       
       return [yearIndex, monthIndex, dayIndex, hourIndex, minuteIndex];
     },
-    getEnterTime() {
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = String(now.getMonth() + 1).padStart(2, "0");
-      const d = String(now.getDate()).padStart(2, "0");
-      const h = String(now.getHours()).padStart(2, "0");
-      const min = String(now.getMinutes()).padStart(2, "0");
-      this.enterTime = `${y}-${m}-${d} ${h}:${min}`;
+	getEnterTime() {
+	  const now = new Date();
+	  const y = now.getFullYear();
+	  const m = String(now.getMonth() + 1).padStart(2, "0");
+	  const d = String(now.getDate()).padStart(2, "0");
+	  const h = String(now.getHours()).padStart(2, "0");
+	  const min = String(now.getMinutes()).padStart(2, "0");
+	  this.enterTime = `${y}-${m}-${d} ${h}:${min}`;
       this.dateTimeIndex = this.getCurrentDateTimeIndex();
-    },
+	},
     // 更新 enterTime 显示（根据当前 dateTimeIndex）
     updateEnterTimeDisplay() {
       const currentYear = new Date().getFullYear();
@@ -261,7 +261,7 @@ export default {
       
       // 更新显示的时间
       this.updateEnterTimeDisplay();
-    },
+	},
 	upload() {
 	  if (this.images.length >= 5) {
 		uni.showToast({
@@ -528,7 +528,7 @@ export default {
 				});
 			}
 			this.submitting = false;
-			return;
+				return;
 		}
 		
 		// 在线状态，正常提交
@@ -549,10 +549,10 @@ export default {
 		});
 		
 		uni.hideLoading();
-		uni.showToast({
+			  uni.showToast({
 		  title: "提交成功",
-		  icon: "success"
-		});
+				icon: "success"
+			  });
 		
 		// 提交成功后，延迟返回上一页
 		setTimeout(() => {
@@ -821,6 +821,6 @@ export default {
 		.thumb-img {
 		  width: 200rpx;
 		  height: 200rpx;
-		}
+	}
 
 </style>

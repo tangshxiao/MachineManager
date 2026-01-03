@@ -96,10 +96,11 @@ export default {
   methods: {
 	  
 	  Details(item) {
-	    // 携带 id 参数跳转（如果你的唯一标识字段不是 id，请替换 item.id 为 item.xxx）
-	    uni.navigateTo({
-	      url: `/pages/home/level/record/device-detail/device-detail?id=${item.id}`
-	    });
+	    // 打卡记录详情页（如果需要可以单独实现，这里暂时保留）
+	    // uni.showToast({
+	    //   title: '打卡记录详情功能待开发',
+	    //   icon: 'none'
+	    // })
 	  },
 	  
     // 加载打卡记录列表

@@ -96,6 +96,7 @@
 								class="user-card-Equipment-Component1"
 								v-for="item in deviceList"
 								:key="item.id"
+								@click="goToDeviceDetail(item)"
 							>
 								<view class="user-card-Equipment-Component-text">
 									<view class="record-info">
@@ -271,6 +272,19 @@
 		uni.navigateTo({
 		  url: '/pages/home/level/Offline/Offline'
 		});
+	},
+	// 跳转到设备详情
+	goToDeviceDetail(item) {
+	  if (!item.id) {
+		uni.showToast({
+		  title: '设备信息错误',
+		  icon: 'none'
+		})
+		return
+	  }
+	  uni.navigateTo({
+		url: `/pages/home/level/record/device-detail/device-detail?id=${item.id}`
+	  })
 	}
   }
 }
@@ -465,6 +479,7 @@
 		flex-direction: column;
 		border-radius: 16rpx;
 		margin-bottom: 20rpx;
+		cursor: pointer;
 	}
 	
 	.user-card-Equipment-Component2{

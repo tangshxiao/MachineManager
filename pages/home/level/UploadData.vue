@@ -31,7 +31,7 @@
 					<view class="Content-picker-sele" style="display:flex;justify-content:space-between;align-items:center;width:100%;">
 						<view class="Content-text-left-a">{{message}}</view>
 						<image src="/static/icon_jt_xx.png" style="width:32rpx; height: 32rpx;flex-shrink:0;margin-right:16rpx;"></image>
-					</view>
+				</view>
 				</picker>
 			</view>
 			<view class="Content-text">
@@ -103,7 +103,7 @@ import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
 import { saveCacheRecord } from '@/utils/offlineCache.js'
 
-export default {
+	export default {
 	  data() {
 	    return {
 			shebei:"DEVOOOO3",
@@ -123,7 +123,7 @@ export default {
 			submitting: false,
 	    }
 	  },
-
+	  
 	  onLoad() {
 		// 页面加载时获取当前时间
 		this.getEnterTime();
@@ -600,7 +600,7 @@ export default {
 	}
 	.Head-right{
 		width: 318rpx;
-		
+
 	}
 	.Head-right img{
 		position: relative;

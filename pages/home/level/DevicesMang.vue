@@ -34,6 +34,7 @@
         class="device-item" 
         v-for="item in filteredList" 
         :key="item.id"
+        @click="goToDeviceDetail(item)"
       >
 	  <view class="device-item-box">
 			  <view class="">
@@ -230,7 +231,20 @@ export default {
 		  uni.navigateTo({
 			  url:'/pages/home/level/Newly'
 		  });
-		}
+	},
+	// 跳转到设备详情
+	goToDeviceDetail(item) {
+	  if (!item.id) {
+		uni.showToast({
+		  title: '设备信息错误',
+		  icon: 'none'
+		})
+		return
+	  }
+	  uni.navigateTo({
+		url: `/pages/home/level/record/device-detail/device-detail?id=${item.id}`
+	  })
+	}
   }
 };
 </script>
@@ -315,6 +329,7 @@ page {
   background-color: #FFFFFF;
   border-radius: 16rpx;
   margin-bottom: 20rpx;
+  cursor: pointer;
 }
 
 .device-item-text{

@@ -10,6 +10,7 @@ export const API_ENDPOINTS = {
   ATTENDANCE_ADD_API: `${API_BASE_URL}/attendance/add`,
   DEVICE_LIST_API: `${API_BASE_URL}/device/list`,
   DEVICE_ADD_API: `${API_BASE_URL}/device/add`,
+  DEVICE_DETAILS_API: `${API_BASE_URL}/device/details`,
   UPLOAD_API: `${API_BASE_URL}/upload/upload`,
   APP_UPDATE_API: `${API_BASE_URL}/app/last`,
 };
