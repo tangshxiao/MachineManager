@@ -6,7 +6,40 @@
 				<view class="box1-text">
 					设备编号<view class="red">*</view>
 				</view>
-				<input class="box1-input"  v-model="shebie" type="text" placeholder="输入内容" />
+				<view class="device-select-wrapper">
+					<input 
+						class="box1-input" 
+						v-model="deviceKeyword" 
+						type="text" 
+						placeholder="输入设备编号或名称搜索"
+						@input="onDeviceSearch"
+						@focus="handleDeviceInputFocus"
+						@blur="handleDeviceInputBlur"
+						:id="'device-input'"
+					/>
+					<!-- 设备下拉列表 -->
+					<view v-if="showDeviceList && deviceList.length > 0" class="device-dropdown" :style="{ top: dropdownTop + 'px' }">
+						<view 
+							v-for="(item, index) in deviceList" 
+							:key="index"
+							class="device-dropdown-item"
+							@click="selectDevice(item)"
+						>
+							<view class="device-item-text">
+								<text class="device-no">{{ item.deviceNo || '-' }}</text>
+								<text class="device-name">{{ item.name || '' }}</text>
+							</view>
+						</view>
+					</view>
+					<!-- 加载中 -->
+					<view v-if="deviceLoading" class="device-loading" :style="{ top: dropdownTop + 'px' }">
+						加载中...
+					</view>
+					<!-- 无数据 -->
+					<view v-if="showDeviceList && !deviceLoading && deviceList.length === 0 && deviceKeyword" class="device-empty" :style="{ top: dropdownTop + 'px' }">
+						暂无设备
+					</view>
+				</view>
 				<view v-if="errorShebie" class="error-text">
 				    {{ errorShebie }}
 				</view>
@@ -85,7 +118,9 @@
 		<view class="">
 			<button class="Submit-btn" @click="submit">提交异常上报</button>
 		</view>
-</view>
+		<!-- 遮罩层，点击关闭设备列表 -->
+		<view v-if="showDeviceList" class="device-mask" @click="showDeviceList = false"></view>
+	</view>
 </template>
 <script>
 import http from '@/utils/request.js'
@@ -98,6 +133,13 @@ export default {
   data() {
     return {
       shebie: "",
+      deviceId: "", // 选中的设备ID
+      deviceKeyword: "", // 设备搜索关键词
+      deviceList: [], // 设备列表
+      showDeviceList: false, // 是否显示设备列表
+      deviceLoading: false, // 设备列表加载中
+      deviceSearchTimer: null, // 搜索防抖定时器
+      dropdownTop: 0, // 下拉列表顶部位置
       equipment: ["进场", "出场"],
       sele: "请选择设备类型",
       beizhu: "",
@@ -121,9 +163,107 @@ export default {
     this.getEnterTime(); // 页面初始化获取当前时间
   },
   methods: {
+    // 处理设备输入框聚焦
+    handleDeviceInputFocus() {
+      this.showDeviceList = true;
+      this.updateDropdownPosition();
+    },
+    
+    // 更新下拉列表位置
+    updateDropdownPosition() {
+      this.$nextTick(() => {
+        const query = uni.createSelectorQuery().in(this);
+        query.select('#device-input').boundingClientRect((data) => {
+          if (data) {
+            // 计算下拉列表的top位置：输入框底部 + 8rpx间距，转换为px（1rpx ≈ 0.5px）
+            this.dropdownTop = data.bottom + 8;
+          }
+        }).exec();
+      });
+    },
+    
+    // 设备搜索
+    onDeviceSearch(e) {
+      // 只允许输入数字和英文字母
+      const value = e.detail.value;
+      const filteredValue = value.replace(/[^a-zA-Z0-9]/g, '');
+      
+      // 如果输入被过滤，更新输入框的值
+      if (value !== filteredValue) {
+        this.deviceKeyword = filteredValue;
+        // 使用 nextTick 确保值更新后再触发搜索
+        this.$nextTick(() => {
+          this.handleDeviceSearch();
+        });
+      } else {
+        this.deviceKeyword = value;
+        this.handleDeviceSearch();
+      }
+      
+      // 清除错误提示
+      this.errorShebie = "";
+    },
+    
+    // 处理设备搜索（防抖）
+    handleDeviceSearch() {
+      // 防抖处理
+      if (this.deviceSearchTimer) {
+        clearTimeout(this.deviceSearchTimer);
+      }
+      
+      this.deviceSearchTimer = setTimeout(() => {
+        if (this.deviceKeyword.trim()) {
+          this.searchDevices();
+        } else {
+          this.deviceList = [];
+          this.showDeviceList = false;
+        }
+      }, 300);
+    },
+    
+    // 搜索设备列表
+    async searchDevices() {
+      if (this.deviceLoading) return;
+      
+      this.deviceLoading = true;
+      try {
+        const res = await http.post(API_ENDPOINTS.DEVICE_LIST_API, {
+          sort: 0,
+          current: 1,
+          size: 20,
+          keyword: this.deviceKeyword.trim()
+        });
+        const records = (res && res.records) || [];
+        this.deviceList = records;
+        this.showDeviceList = true;
+        this.updateDropdownPosition();
+      } catch (e) {
+        console.error('搜索设备失败:', e);
+        this.deviceList = [];
+      } finally {
+        this.deviceLoading = false;
+      }
+    },
+    
+    // 选择设备
+    selectDevice(item) {
+      this.shebie = item.deviceNo || "";
+      this.deviceId = item.id || "";
+      this.deviceKeyword = item.deviceNo || "";
+      this.showDeviceList = false;
+      this.errorShebie = "";
+    },
+    
+    // 关闭设备列表
+    closeDeviceList() {
+      this.showDeviceList = false;
+    },
+    
     openchange(e) {
       const index = e.detail.value;
       this.sele = this.equipment[index];
+      // 关闭设备选择列表
+      this.showDeviceList = false;
     },
     // 生成天数数组（根据年月）
     generateDaysArray(year, month) {
@@ -366,15 +506,15 @@ export default {
     // 提交上报
     async submit() {
       // 表单验证
-      if (!this.shebie.trim()) {
-        this.errorShebie = "设备编号不能为空";
+      if (!this.shebie.trim() || !this.deviceId) {
+        this.errorShebie = "请选择设备";
         return;
       }
       
-      if (!validDevices.includes(this.shebie)) {
-        this.errorShebie = "该设备编号不存在，请重新输入";
-        return;
-      }
+      // if (!validDevices.includes(this.shebie)) {
+      //   this.errorShebie = "该设备编号不存在，请重新输入";
+      //   return;
+      // }
       
       if (this.sele == "请选择设备类型") {
         this.picker = "请选择设备类型";
@@ -438,8 +578,7 @@ export default {
         
         // 4. 提交上报数据
         const submitData = {
- 
-          deviceId: 365, // 这里可能需要根据设备编号获取实际设备ID
+          deviceId: this.deviceId,
           type: type,
           address: this.address || "",
           lng: this.lng || "",
@@ -670,6 +809,72 @@ export default {
 		.thumb-img {
 		  width: 200rpx;
 		  height: 200rpx;
+		}
+		
+		.device-select-wrapper {
+		  position: relative;
+		}
+		
+		.device-dropdown {
+		  position: fixed;
+		  left: 24rpx;
+		  right: 24rpx;
+		  background-color: #FFFFFF;
+		  border-radius: 16rpx;
+		  max-height: 500rpx;
+		  overflow-y: auto;
+		  z-index: 9999;
+		  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.15);
+		}
+		
+		.device-dropdown-item {
+		  padding: 24rpx 20rpx;
+		  border-bottom: 1rpx solid #F5F9FC;
+		}
+		
+		.device-dropdown-item:last-child {
+		  border-bottom: none;
+		}
+		
+		.device-item-text {
+		  display: flex;
+		  flex-direction: column;
+		  gap: 8rpx;
+		}
+		
+		.device-no {
+		  font-size: 30rpx;
+		  color: #333;
+		  font-weight: 500;
+		}
+		
+		.device-name {
+		  font-size: 26rpx;
+		  color: #999;
+		}
+		
+		.device-loading,
+		.device-empty {
+		  position: fixed;
+		  left: 24rpx;
+		  right: 24rpx;
+		  background-color: #FFFFFF;
+		  border-radius: 16rpx;
+		  padding: 40rpx;
+		  text-align: center;
+		  color: #999;
+		  font-size: 28rpx;
+		  z-index: 9999;
+		  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.15);
+		}
+		
+		.device-mask {
+		  position: fixed;
+		  top: 0;
+		  left: 0;
+		  right: 0;
+		  bottom: 0;
+		  z-index: 9998;
 		}
 
 </style>

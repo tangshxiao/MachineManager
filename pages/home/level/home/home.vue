@@ -32,7 +32,7 @@
 							离线存储
 						</view>
 					</view>
-					<view class="user-card-Function-imga">
+					<view class="user-card-Function-imga" @click="moreFunctions">
 						<image src="/imgs/shouyetu4.png" alt="" />
 						<view class="user-card-Function-text">
 							更多功能
@@ -271,6 +271,13 @@
 	Offline(){
 		uni.navigateTo({
 		  url: '/pages/home/level/Offline/Offline'
+		});
+	},
+	// 更多功能
+	moreFunctions(){
+		uni.showToast({
+		  title: '暂无更多功能',
+		  icon: 'none'
 		});
 	},
 	// 跳转到设备详情

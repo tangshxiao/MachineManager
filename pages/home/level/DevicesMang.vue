@@ -63,8 +63,8 @@
       <!-- 加载状态 -->
       <view class="loading-more" v-if="loading">
         <text class="loading-text">加载中...</text>
-      </view>
-      
+    </view>
+
       <!-- 没有更多数据 -->
       <view class="no-more" v-if="!hasMore && deviceList.length > 0">
         <text class="no-more-text">没有更多数据了</text>
@@ -150,7 +150,7 @@ export default {
 		return;
 	  }
 	  await this.loadDeviceList(false);
-	},
+    },
 	async loadDeviceList(reset = false) {
 	  if (this.loading) return;
 	  
@@ -218,10 +218,10 @@ export default {
 	  } catch (e) {
 		console.error('获取设备列表失败:', e);
 		if (!reset) {
-		  uni.showToast({
+		uni.showToast({
 			title: '加载失败',
-			icon: 'none'
-		  });
+		  icon: 'none'
+		});
 		}
 	  } finally {
 		this.loading = false;
@@ -244,7 +244,7 @@ export default {
 	  uni.navigateTo({
 		url: `/pages/home/level/record/device-detail/device-detail?id=${item.id}`
 	  })
-	}
+		}
   }
 };
 </script>
@@ -259,7 +259,7 @@ export default {
 	}
 page {
 	background-color: #F5F8FC; 
-	font-family: 'iconfont';
+	 font-family: 'iconfont'; 
 	padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
 }
 
@@ -395,6 +395,6 @@ page {
 .no-more-text {
   font-size: 26rpx;
   color: #999;
-}
+  }
 </style>
 
