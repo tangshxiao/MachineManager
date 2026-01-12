@@ -111,11 +111,14 @@
 					return;
 				}
 
-				uni.showLoading({ title: '准备下载...', mask: true });
+				const waiting = plus.nativeUI.showWaiting("准备下载...", {
+				        back: "none" 
+				    });
 
 				const downloadTask = uni.downloadFile({
 					url: url,
 					success: (downloadRes) => {
+						waiting.close();
 						uni.hideLoading();
 						if (downloadRes.statusCode === 200) {
 							console.log('下载成功，准备安装');
@@ -136,14 +139,16 @@
 					}
 				});
 
-				downloadTask.onProgressUpdate((res) => {
-					if (res.progress > 0) {
-						uni.showLoading({
-							title: `已下载 ${res.progress}%`,
-							mask: true
-						});
-					}
-				});
+				let lastProgress = 0;
+				
+				    downloadTask.onProgressUpdate((res) => {
+		
+				        if (res.progress > lastProgress) {
+				            lastProgress = res.progress;
+							
+				            waiting.setTitle(`已下载 ${res.progress}%`);
+				        }
+				    });
 			},
 
 			compareVersion(v1, v2) {
