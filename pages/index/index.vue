@@ -28,15 +28,11 @@
   </view>
 </template>
 
-
-
 <script>
-import http from '../../utils/request.js'
-import API_ENDPOINTS from '../../config/api.js'
+import api from '../../services/api.js'
 
 export default {
   onLoad() {
-    // 检查是否已选择项目，如果已选择则直接跳转到首页
     const selectedProjectIds = uni.getStorageSync('selectedProjectIds')
     if (selectedProjectIds) {
       console.log('检测到已选择项目，自动跳转到首页')
@@ -45,14 +41,13 @@ export default {
       })
       return
     }
-    // 如果没有选择项目，则加载项目列表
     this.sweep()
   },
   data() {
     return {
-      selected: [],   // 多选保存数组
+      selected: [],
       loading: false,
-      // 项目列表与分页
+
       projects: [],
       pageNum: 1,
       pageSize: 10,
@@ -60,7 +55,6 @@ export default {
     }
   },
 
-  // 下拉加载更多
   onReachBottom() {
     if (this.hasMore && !this.loading) {
       this.loadProjectList(false)
@@ -71,47 +65,40 @@ export default {
     toggleSelect(id) {
       const index = this.selected.indexOf(id)
       if (index > -1) {
-        // 已选中 → 取消
         this.selected.splice(index, 1)
       } else {
-        // 未选中 → 添加
         this.selected.push(id)
       }
     },
 
-    // 登录并加载第一页项目列表
     async sweep() {
       if (this.loading) return
       this.loading = true
       try {
-        // 1. 登录，获取 token（账号密码写死）
-        const loginData = await http.post(API_ENDPOINTS.LOGIN_API, {
-          username: 'dt',
-          password: '123456'
-        })
+        const loginData = await api.login()
+
+        console.log('登录成功，返回数据:', loginData)
 
         if (loginData && loginData.token) {
           uni.setStorageSync('token', loginData.token)
         }
 
-      
-
-        // 2. 登录成功后，请求项目列表第一页
         await this.loadProjectList(true)
-        // uni.showToast({
-        //         title: '登录成功',
-        //         icon: 'success'
-        //       })
-        // // 3. 获取列表后再跳转
-        //uni.navigateTo({
-          //url: '/pages/home/level/MainContainer',
-        // })
+
       } catch (err) {
         console.error('登录或加载项目列表失败:', err)
-        uni.showToast({
-          title: '登录或加载列表失败',
-          icon: 'none'
-        })
+        if (err.code === -2) {
+             uni.showModal({
+                 title: '设备未注册',
+                 content: '请联系管理员添加此设备ID到数据库',
+                 showCancel: false
+             })
+        } else {
+            uni.showToast({
+              title: (err.msg || '登录失败'),
+              icon: 'none'
+            })
+        }
       } finally {
         this.loading = false
       }
@@ -120,24 +107,20 @@ export default {
     goNext() {
       if (!this.selected.length) return
       const ids = this.selected.join(',')
-      // 由于 switchTab 不支持 URL 参数，使用本地存储传递参数
+
       uni.setStorageSync('selectedProjectIds', ids)
-      // 跳转到 tabBar 首页（使用 switchTab）
       uni.switchTab({
         url: '/pages/home/level/home/home'
       })
     },
 
-    // 加载项目列表，支持分页
+
     async loadProjectList(reset = false) {
       try {
         const nextPage = reset ? 1 : this.pageNum + 1
-        const res = await http.post(API_ENDPOINTS.PROJECT_LIST_API, {
-          current: nextPage,
-          size: this.pageSize
-        })
 
-        // res 是 data，对象里有 records/total/size/current/pages
+        const res = await api.fetchProjectList(nextPage, this.pageSize)
+
         const records = (res && res.records) || []
 
         if (reset) {
@@ -159,7 +142,6 @@ export default {
       }
     },
 
-    // 获取选中的项目名称
     getSelectedProjectName() {
       const selected = this.projects.find(p => p.id === this.selectedProject)
       return selected ? selected.name : ''
@@ -169,6 +151,7 @@ export default {
 </script>
 
 <style>
+/* 样式保持不变 */
 .container {
   padding: 10rpx;
   background-color: #F5F8FC;

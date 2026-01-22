@@ -58,6 +58,7 @@ const request = (options = {}) => {
       method,
       data: requestData,
       header: {
+		  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         // 使用传入的 Content-Type 或默认值
         'Content-Type': contentType,
         // 后端如果使用 Authorization 或 token 任一字段，都可以从这里取到
