@@ -3,6 +3,12 @@ export const getDeviceIdentifier = () => {
   let deviceId = uni.getStorageSync('device_id');
   
   if (deviceId) {
+    // 确保长度是30位，不足则补0
+    if (deviceId.length < 30) {
+      deviceId = deviceId.padEnd(30, '0');
+      // 更新缓存
+      uni.setStorageSync('device_id', deviceId);
+    }
     return deviceId;
   }
 
@@ -15,7 +21,12 @@ export const getDeviceIdentifier = () => {
      deviceId = 'web_dev_' + Date.now() + Math.random().toString(36).substr(2);
   }
 
-  // 4. 存入缓存，保证下次还是它
+  // 4. 确保长度是30位，不足则补0
+  if (deviceId.length < 30) {
+    deviceId = deviceId.padEnd(30, '0');
+  }
+
+  // 5. 存入缓存，保证下次还是它
   uni.setStorageSync('device_id', deviceId);
   return deviceId;
 }

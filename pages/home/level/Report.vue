@@ -234,13 +234,26 @@ export default {
 	async searchDevices() {
 	  if (this.deviceLoading) return;
 	  
+	  // 获取项目ID
+	  const selectedProjectIds = uni.getStorageSync('selectedProjectIds');
+	  if (!selectedProjectIds) {
+		uni.showToast({
+		  title: '请先选择项目',
+		  icon: 'none'
+		});
+		return;
+	  }
+	  // 取第一个项目ID作为pid
+	  const pid = selectedProjectIds.split(',')[0];
+	  
 	  this.deviceLoading = true;
 	  try {
 		const res = await http.post(API_ENDPOINTS.DEVICE_LIST_API, {
 		  sort: 0,
 		  current: 1,
 		  size: 20,
-		  keyword: this.deviceKeyword.trim()
+		  keyword: this.deviceKeyword.trim(),
+		  pid: pid
 		});
 		const records = (res && res.records) || [];
 		this.deviceList = records;

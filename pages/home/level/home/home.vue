@@ -20,22 +20,10 @@
 							异常上报
 						</view>
 					</view>
-					<view class="user-card-Function-imga" @click="devices">
-						<image src="/imgs/shouyetu2.png" alt="" />
-						<view class="user-card-Function-text" >
-							我的设备
-						</view>
-					</view>
 					<view class="user-card-Function-imga"  @click="Offline">
 						<image src="/imgs/shouyetu3.png" alt="" />
 						<view class="user-card-Function-text">
 							离线存储
-						</view>
-					</view>
-					<view class="user-card-Function-imga" @click="moreFunctions">
-						<image src="/imgs/shouyetu4.png" alt="" />
-						<view class="user-card-Function-text">
-							更多功能
 						</view>
 					</view>
 				</view>
@@ -186,10 +174,20 @@
 
     async loadDeviceList() {
       try {
+        // 获取项目ID
+        const selectedProjectIds = uni.getStorageSync('selectedProjectIds');
+        if (!selectedProjectIds) {
+          console.error('未找到项目ID');
+          return;
+        }
+        // 取第一个项目ID作为pid
+        const pid = selectedProjectIds.split(',')[0];
+        
         const res = await http.post(API_ENDPOINTS.DEVICE_LIST_API, {
           sort: 0,
           current: this.deviceCurrent,
-          size: this.deviceSize
+          size: this.deviceSize,
+          pid: pid
         })
         const records = (res && res.records) || []
         this.deviceList = records

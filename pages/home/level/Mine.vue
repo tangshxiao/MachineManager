@@ -7,7 +7,7 @@
     </view>
 
     <!-- User Info Card -->
-    <view class="user-card">
+   <!-- <view class="user-card">
       <view class="user-avatar">
         <image src="/static/avatar-placeholder.png" mode="aspectFill"></image>
       </view>
@@ -17,7 +17,7 @@
         <view class="user-role">角色: 操作员</view>
       </view>
       <button class="edit-btn">修改资料</button>
-    </view>
+    </view> -->
 
     <!-- Menu Items -->
     <view class="menu-item"@click="offline" style="margin-top: 70rpx;">
@@ -37,9 +37,9 @@
     </view>
 
     <!-- Logout Button -->
-    <view class="logout-btn" @click="handleLogout">
+    <!-- <view class="logout-btn" @click="handleLogout">
       <text>退出登录</text>
-    </view>
+    </view> -->
   </view>
 </template>
 

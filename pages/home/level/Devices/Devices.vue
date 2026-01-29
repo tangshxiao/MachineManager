@@ -164,11 +164,24 @@ export default {
 		const status = statusMap[this.currentTab];
 		const nextPage = reset ? 1 : this.deviceCurrent + 1;
 		
+		// 获取项目ID
+		const selectedProjectIds = uni.getStorageSync('selectedProjectIds');
+		if (!selectedProjectIds) {
+		  uni.showToast({
+			title: '请先选择项目',
+			icon: 'none'
+		  });
+		  return;
+		}
+		// 取第一个项目ID作为pid
+		const pid = selectedProjectIds.split(',')[0];
+		
 		const params = {
 		  sort: 0,
 		  current: nextPage,
 		  size: this.deviceSize,
-		  keyword: this.keyword
+		  keyword: this.keyword,
+		  pid: pid
 		};
 		// 全部时不传 status，其他状态传 0/1/2
 		if (status !== undefined) {
