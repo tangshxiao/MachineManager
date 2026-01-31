@@ -11,6 +11,8 @@ export const API_ENDPOINTS = {
   DEVICE_LIST_API: `${API_BASE_URL}/device/list`,
   DEVICE_ADD_API: `${API_BASE_URL}/device/add`,
   DEVICE_DETAILS_API: `${API_BASE_URL}/device/details`,
+  DEVICE_QR_DETAILS_API: `${API_BASE_URL}/device/qrDetails`,
+  DEVICE_BIND_QRCODE_API: `${API_BASE_URL}/device/bindQrcode`,
   UPLOAD_API: `${API_BASE_URL}/upload/upload`,
   APP_UPDATE_API: `${API_BASE_URL}/app/last`,
 };

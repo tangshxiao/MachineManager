@@ -20,9 +20,25 @@
     </view> -->
 
     <!-- Menu Items -->
-    <view class="menu-item"@click="offline" style="margin-top: 70rpx;">
+    <view class="menu-item" @click="selectProject" style="margin-top: 70rpx;">
       <view class="menu-left">
-        <image src="/static/icon_lx_leftimg.png" mode="aspectFill" class="menu-icon"></image>
+        <image src="/static/icon_sel_project.svg" mode="aspectFill" class="menu-icon"></image>
+        <text class="menu-text">选择项目</text>
+      </view>
+      <image src="/static/icon_right_jt.png" mode="aspectFill" class="arrow-icon"></image>
+    </view>
+    
+    <view class="menu-item" @click="bindDevice">
+      <view class="menu-left">
+        <image src="/static/icon_bind_dev.svg" mode="aspectFill" class="menu-icon"></image>
+        <text class="menu-text">绑定设备</text>
+      </view>
+      <image src="/static/icon_right_jt.png" mode="aspectFill" class="arrow-icon"></image>
+    </view>
+    
+    <view class="menu-item" @click="offline">
+      <view class="menu-left">
+        <image src="/static/icon_lx_leftimg.svg" mode="aspectFill" class="menu-icon"></image>
         <text class="menu-text">离线缓存记录</text>
       </view>
       <image src="/static/icon_right_jt.png" mode="aspectFill" class="arrow-icon"></image>
@@ -30,16 +46,16 @@
     
     <view class="menu-item" @click="check">
       <view class="menu-left">
-        <image src="/static/icon_dk_leftimg.png" mode="aspectFill" class="menu-icon"></image>
+        <image src="/static/icon_dk_leftimg.svg" mode="aspectFill" class="menu-icon"></image>
         <text class="menu-text">所有打卡数据</text>
       </view>
       <image src="/static/icon_right_jt.png" mode="aspectFill" class="arrow-icon"></image>
     </view>
 
     <!-- Logout Button -->
-    <!-- <view class="logout-btn" @click="handleLogout">
+    <view class="logout-btn" @click="handleLogout">
       <text>退出登录</text>
-    </view> -->
+    </view>
   </view>
 </template>
 
@@ -49,6 +65,48 @@ export default {
     navigateTo(page) {
       console.log('Navigate to:', page);
     },
+	
+	selectProject(){
+		const that = this
+		uni.showModal({
+		  title: '提示',
+		  content: '确定要重新选择项目吗？',
+		  success: function (res) {
+			if (res.confirm) {
+			  console.log('用户确认重新选择项目')
+			  // 清除选择的项目 IDs
+			  uni.removeStorageSync('selectedProjectIds')
+			  // 跳转到选择项目页面
+			  uni.reLaunch({
+				url: '/pages/index/index'
+			  })
+			}
+		  }
+		});
+	},
+	
+	bindDevice(){
+		// 先扫码，然后跳转到绑定设备页面
+		uni.scanCode({
+			scanType: ['barCode', 'qrCode'],
+			success: (res) => {
+				console.log('扫码成功，内容:', res.result);
+				// 跳转到绑定设备页面，传递二维码内容
+				uni.navigateTo({
+					url: '/pages/home/level/BindDevice?qrCode=' + encodeURIComponent(res.result)
+				});
+			},
+			fail: (err) => {
+				console.error('扫码失败:', err);
+				if (err.errMsg && !err.errMsg.includes('cancel')) {
+					uni.showToast({
+						title: '扫码失败',
+						icon: 'none'
+					});
+				}
+			}
+		});
+	},
 	
 	check(){
 		uni.navigateTo({

@@ -39,11 +39,11 @@
 					{{  enterTime }}
 				</view>
 			</view>
-			<view class="Content-text">
+			<!-- <view class="Content-text">
 				操作人:<view class="Content-text-left">
 					{{person}}
 				</view>
-			</view>
+			</view> -->
 			<view class="Content-text">
 				证明材料:
 			</view>
@@ -71,11 +71,14 @@
 			<view class="photo-text">
 				支持JPG/PNG格式，最多上传5张（已选 {{ images.length }} 张）
 			</view>
-			<view class="Content-text">
-				设备二维码:
-				 <view class="">
-					
-				 </view>
+			<view class="Content-text qr-code-row">
+				<view class="qr-code-label">设备二维码:</view>
+				<view class="qr-code-container" v-if="qrCodeUrl">
+					<image :src="qrCodeUrl" mode="aspectFit" class="qr-code-image" @click="previewQrCode"></image>
+				</view>
+				<view class="qr-code-placeholder" v-else>
+					<text class="placeholder-text">暂无二维码</text>
+				</view>
 			</view>
 		</view>
 		<view class="Content-btn">
@@ -108,8 +111,8 @@ import { saveCacheRecord } from '@/utils/offlineCache.js'
 	    return {
 			shebei:"DEVOOOO3",
 			shengchan:"生产线B设备",
-			message: "进场",
-			checkInTypes: ["进场", "出场"],
+			message: "在用",
+			checkInTypes: ["在用", "维修"],
 			enterTime:"",
 			person:"老周",
 			images:[],
@@ -121,6 +124,8 @@ import { saveCacheRecord } from '@/utils/offlineCache.js'
 			lat: "",
 			// 提交状态
 			submitting: false,
+			// 二维码图片URL
+			qrCodeUrl: ""
 	    }
 	  },
 	  
@@ -193,42 +198,97 @@ import { saveCacheRecord } from '@/utils/offlineCache.js'
 			 const index = e.detail.value;
 			 this.message = this.checkInTypes[index];
 		 },
-		 handleScanData(jsonStr) {
+		 async handleScanData(jsonStr) {
 		 				try {
 		 					// 将 JSON 字符串转换为对象
-		 					const data = JSON.parse(jsonStr);
-		 
-		 					// 1. 对应设备编号 (deviceNo -> shebei)
-		 					if (data.deviceNo) {
-		 						this.shebei = data.deviceNo;
-		 					}
-		 
-		 					// 2. 对应设备名称 (name -> shengchan)
-		 					if (data.name) {
-		 						this.shengchan = data.name;
+		 					const qrData = JSON.parse(jsonStr);
+		 					
+		 					// 提取qrNo
+		 					if (!qrData.qrNo) {
+		 						uni.showToast({
+		 							title: '二维码格式错误',
+		 							icon: 'none'
+		 						});
+		 						return;
 		 					}
 		 					
-		 					// 3. 保存设备ID，用于提交打卡
-		 					if (data.id) {
-		 						this.deviceId = data.id;
+		 					// 调用二维码详情接口获取设备信息
+		 					uni.showLoading({
+		 						title: '加载中...',
+		 						mask: true
+		 					});
+		 					
+		 					const qrDetails = await http.post(API_ENDPOINTS.DEVICE_QR_DETAILS_API, {
+		 						qrNo: qrData.qrNo
+		 					});
+		 					
+		 					uni.hideLoading();
+		 					
+		 					console.log('二维码详情数据:', qrDetails);
+		 					
+		 					if (qrDetails) {
+		 						// 1. 反显设备编号 (deviceNo -> shebei)
+		 						if (qrDetails.deviceNo) {
+		 							this.shebei = qrDetails.deviceNo;
+		 						}
+		 
+		 						// 2. 反显设备名称 (deviceName -> shengchan)
+		 						if (qrDetails.deviceName) {
+		 							this.shengchan = qrDetails.deviceName;
+		 						}
+		 						
+		 						// 3. 保存设备ID，用于提交打卡
+		 						if (qrDetails.deviceId) {
+		 							this.deviceId = qrDetails.deviceId;
+		 						}
+		 						
+		 						// 4. 保存二维码图片URL
+		 						if (qrDetails.url) {
+		 							this.qrCodeUrl = qrDetails.url;
+		 						}
+		 						
+		 						uni.showToast({
+		 							title: '设备信息加载成功',
+		 							icon: 'success'
+		 						});
+		 					} else {
+		 						uni.showToast({
+		 							title: '获取设备信息失败',
+		 							icon: 'none'
+		 						});
 		 					}
 		 
-		 					uni.showToast({
-		 						title: '扫码数据加载成功',
-		 						icon: 'success'
-		 					});
-		 
 		 				} catch (e) {
-		 					console.error("解析二维码失败", e);
-		 					uni.showToast({
-		 						title: '二维码格式错误',
-		 						icon: 'none'
-		 					});
-		 					// 容错：如果不是JSON，直接显示原始字符串
-		 					this.shebei = jsonStr;
+		 					uni.hideLoading();
+		 					console.error("处理二维码失败", e);
+		 					if (e.msg) {
+		 						uni.showToast({
+		 							title: e.msg,
+		 							icon: 'none'
+		 						});
+		 					} else {
+		 						uni.showToast({
+		 							title: '二维码格式错误',
+		 							icon: 'none'
+		 						});
+		 					}
+		 					// 容错：清空设备信息
+		 					this.shebei = '';
+		 					this.shengchan = '';
 		 					this.deviceId = 0;
+		 					this.qrCodeUrl = '';
 		 				}
 		 			},
+		 
+		 // 预览二维码图片
+		 previewQrCode() {
+			 if (this.qrCodeUrl) {
+				 uni.previewImage({
+					 urls: [this.qrCodeUrl],
+					 current: this.qrCodeUrl
+				 });
+			 }
+		 },
 		 
 		  getEnterTime() {
 		 
@@ -387,7 +447,15 @@ import { saveCacheRecord } from '@/utils/offlineCache.js'
 				 return;
 			 }
 			 
-			 if (!this.message || (this.message !== '进场' && this.message !== '出场')) {
+			 if (!this.shebei || !this.shebei.trim()) {
+				 uni.showToast({
+					 title: '设备编号不能为空',
+					 icon: 'none'
+				 });
+				 return;
+			 }
+			 
+			 if (!this.message || (this.message !== '在用' && this.message !== '维修')) {
 				 uni.showToast({
 					 title: '请选择打卡类型',
 					 icon: 'none'
@@ -427,8 +495,8 @@ import { saveCacheRecord } from '@/utils/offlineCache.js'
 					 console.warn('图片上传失败，将在离线数据中保存图片路径', imgError);
 				 }
 				 
-				 // 3. 确定类型：0进场 1离场
-				 const type = this.message === "进场" ? 0 : 1;
+				 // 3. 确定类型：1在用 2维修
+				 const type = this.message === "在用" ? 1 : 2;
 				 
 				 // 4. 格式化时间，确保格式为 YYYY-MM-DD HH:mm:ss
 				 let timeStr = this.enterTime;
@@ -441,7 +509,8 @@ import { saveCacheRecord } from '@/utils/offlineCache.js'
 				 // 5. 构建提交数据
 				 const submitData = {
 					 deviceId: this.deviceId,
-					 type: type,
+					 deviceNo: this.shebei || "", // 设备编号
+					 type: type, // 1在用 2维修
 					 address: this.address || "",
 					 lng: this.lng || "",
 					 lat: this.lat || "",
@@ -463,7 +532,7 @@ import { saveCacheRecord } from '@/utils/offlineCache.js'
 						 deviceId: this.deviceId,
 						 deviceNo: this.shebei,
 						 deviceName: this.shengchan,
-						 tag: this.message === '进场' ? '进场' : '退场',
+						 tag: this.message, // 在用 或 维修
 						 time: timeStr,
 						 address: this.address || "",
 						 lng: this.lng || "",
@@ -532,7 +601,7 @@ import { saveCacheRecord } from '@/utils/offlineCache.js'
 						 deviceId: this.deviceId,
 						 deviceNo: this.shebei,
 						 deviceName: this.shengchan,
-						 tag: this.message === '进场' ? '进场' : '退场',
+						 tag: this.message, // 在用 或 维修
 						 time: this.enterTime,
 						 address: this.address || "",
 						 lng: this.lng || "",
@@ -543,7 +612,8 @@ import { saveCacheRecord } from '@/utils/offlineCache.js'
 						 status: 0,
 						 data: JSON.stringify({
 							 deviceId: this.deviceId,
-							 type: this.message === "进场" ? 0 : 1,
+							 deviceNo: this.shebei || "",
+							 type: this.message === "在用" ? 1 : 2, // 1在用 2维修
 							 address: this.address || "",
 							 lng: this.lng || "",
 							 lat: this.lat || "",
@@ -774,6 +844,54 @@ import { saveCacheRecord } from '@/utils/offlineCache.js'
 		background-color: #003d82;
 		transform: translateY(-2px);
 		box-shadow: 0 4rpx 12rpx rgba(0, 76, 162, 0.3);
+	}
+	
+	/* 二维码行布局 */
+	.qr-code-row {
+		justify-content: flex-start;
+		align-items: center;
+	}
+	
+	.qr-code-label {
+		font-size: 28rpx;
+		color: #333;
+		flex-shrink: 0;
+	}
+	
+	/* 二维码容器 */
+	.qr-code-container {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		flex-shrink: 0;
+		margin-left: 20rpx;
+	}
+	
+	.qr-code-image {
+		width: 200rpx;
+		height: 200rpx;
+		border-radius: 12rpx;
+		background-color: #F5F9FC;
+		border: 2rpx solid #E0E0E0;
+	}
+	
+	/* 二维码占位符 */
+	.qr-code-placeholder {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		width: 200rpx;
+		height: 200rpx;
+		background-color: #F5F9FC;
+		border-radius: 12rpx;
+		border: 2rpx dashed #CCCCCC;
+		flex-shrink: 0;
+		margin-left: 20rpx;
+	}
+	
+	.placeholder-text {
+		font-size: 26rpx;
+		color: #999;
 	}
 	
 </style>

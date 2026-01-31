@@ -7,6 +7,18 @@
 					扫码打卡
 				</button>
 			</view>
+			
+			<!-- 网络提示 -->
+			<view class="network-notice" v-if="showNetworkNotice && hasPendingRecords">
+				<text>已检测到网络，可上传缓存数据</text>
+				<view class="notice-upload-btn" @click="uploadAll">立即上传</view>
+			</view>
+			
+			<!-- 无网络提示 -->
+			<view class="offline-notice" v-if="!isOnline && hasPendingRecords">
+				<text>当前无网络，数据已本地缓存，已缓存数据{{ pendingCount }}条</text>
+			</view>
+			
 			<view class="user-card-Function">
 				<view class="user-card-Record-text">
 					<view class="user-card-Record-text-img">
@@ -113,6 +125,7 @@
 <script>
 	import http from '@/utils/request.js'
 	import API_ENDPOINTS from '@/config/api.js'
+	import { getAllCacheRecords, markRecordUploaded, getCacheStats } from '@/utils/offlineCache.js'
 	
 	export default {
   data() {
@@ -126,7 +139,24 @@
       deviceCurrent: 1,
       deviceSize: 10,
       // 选择的项目 IDs
-      selectedProjectIds: []
+      selectedProjectIds: [],
+      // 网络提示相关
+      showNetworkNotice: false,
+      uploading: false,
+      isOnline: true // 网络状态
+    }
+  },
+  
+  computed: {
+    // 是否有待上传的记录
+    hasPendingRecords() {
+      const stats = getCacheStats()
+      return stats.pending > 0
+    },
+    // 待上传记录数量
+    pendingCount() {
+      const stats = getCacheStats()
+      return stats.pending
     }
   },
 
@@ -149,6 +179,8 @@
     this.deviceCurrent = 1
     this.loadAttendanceList()
     this.loadDeviceList()
+    // 检测网络状态和待上传记录
+    this.checkNetworkStatus()
   },
 
   methods: {
@@ -238,17 +270,80 @@
 
     		// 1. 开始扫码
     		uni.scanCode({
-    			success: (jieguo) => {
+    			success: async (jieguo) => {
     				console.log('扫码成功,内容:', jieguo.result);
     				
-    				// 2. 扫码成功后，才执行跳转
-    				// 注意：这里需要加 "?result=" 来告诉下一个页面参数的名字
-    				uni.navigateTo({
-    					url: '/pages/home/level/UploadData?result=' + encodeURIComponent(jieguo.result)
-    				});
+    				try {
+    					// 解析二维码JSON数据，提取qrNo
+    					const qrData = JSON.parse(jieguo.result);
+    					if (!qrData.qrNo) {
+    						uni.showToast({
+    							title: '二维码格式错误',
+    							icon: 'none'
+    						});
+    						return;
+    					}
+    					
+    					// 调用二维码详情接口，检查状态
+    					uni.showLoading({
+    						title: '检查中...',
+    						mask: true
+    					});
+    					
+    					const qrDetails = await http.post(API_ENDPOINTS.DEVICE_QR_DETAILS_API, {
+    						qrNo: qrData.qrNo
+    					});
+    					
+    					uni.hideLoading();
+    					
+    					// 检查二维码状态：0未绑定 1已绑定
+    					if (qrDetails && qrDetails.status !== undefined) {
+    						if (qrDetails.status === 0) {
+    							// 未绑定，跳转到绑定设备页面
+    							uni.navigateTo({
+    								url: '/pages/home/level/BindDevice?qrCode=' + encodeURIComponent(jieguo.result)
+    							});
+    						} else if (qrDetails.status === 1) {
+    							// 已绑定，跳转到打卡页面
+    							uni.navigateTo({
+    								url: '/pages/home/level/UploadData?result=' + encodeURIComponent(jieguo.result)
+    							});
+    						} else {
+    							uni.showToast({
+    								title: '二维码状态异常',
+    								icon: 'none'
+    							});
+    						}
+    					} else {
+    						uni.showToast({
+    							title: '获取二维码信息失败',
+    							icon: 'none'
+    						});
+    					}
+    				} catch (e) {
+    					uni.hideLoading();
+    					console.error('处理二维码失败:', e);
+    					if (e.msg) {
+    						uni.showToast({
+    							title: e.msg,
+    							icon: 'none'
+    						});
+    					} else {
+    						uni.showToast({
+    							title: '二维码格式错误',
+    							icon: 'none'
+    						});
+    					}
+    				}
     			},
     			fail: (err) => {
     				console.log('扫码失败', err);
+    				if (err.errMsg && !err.errMsg.includes('cancel')) {
+    					uni.showToast({
+    						title: '扫码失败',
+    						icon: 'none'
+    					});
+    				}
     			}
     		});
     	},
@@ -290,6 +385,148 @@
 	  uni.navigateTo({
 		url: `/pages/home/level/record/device-detail/device-detail?id=${item.id}`
 	  })
+	},
+	
+	// 检测网络状态
+	async checkNetworkStatus() {
+	  return new Promise((resolve) => {
+		uni.getNetworkType({
+		  success: (res) => {
+			const isOnline = res.networkType !== 'none' && res.networkType !== 'unknown'
+			this.isOnline = isOnline
+			// 重新获取统计数据，确保是最新的
+			const stats = getCacheStats()
+			const hasPending = stats.pending > 0
+			this.showNetworkNotice = isOnline && hasPending
+			resolve(isOnline)
+		  },
+		  fail: () => {
+			this.isOnline = false
+			this.showNetworkNotice = false
+			resolve(false)
+		  }
+		})
+	  })
+	},
+	
+	// 上传全部缓存记录
+	async uploadAll() {
+	  if (this.uploading) return
+	  
+	  const isOnline = await this.checkNetworkStatus()
+	  if (!isOnline) {
+		uni.showToast({
+		  title: '当前无网络，无法上传',
+		  icon: 'none'
+		})
+		return
+	  }
+	  
+	  const records = getAllCacheRecords()
+	  const pendingRecords = records
+		.filter(record => record.uploadStatus === 'pending')
+		.map(record => ({
+		  id: record.id,
+		  rawData: record
+		}))
+	  
+	  if (pendingRecords.length === 0) {
+		uni.showToast({
+		  title: '没有可上传的记录',
+		  icon: 'none'
+		})
+		return
+	  }
+	  
+	  await this.uploadRecords(pendingRecords)
+	},
+	
+	// 上传记录（核心上传逻辑）
+	async uploadRecords(records) {
+	  this.uploading = true
+	  uni.showLoading({
+		title: '上传中...',
+		mask: true
+	  })
+	  
+	  let successCount = 0
+	  let failedCount = 0
+	  
+	  for (const item of records) {
+		try {
+		  const rawData = item.rawData
+		  if (!rawData || !rawData.data) {
+			markRecordUploaded(item.id, false, '数据格式错误')
+			failedCount++
+			continue
+		  }
+		  
+		  // 解析提交数据
+		  let submitData
+		  try {
+			submitData = JSON.parse(rawData.data)
+		  } catch (e) {
+			markRecordUploaded(item.id, false, '数据解析失败')
+			failedCount++
+			continue
+		  }
+		  
+		  // 如果有本地图片，先上传图片
+		  if (rawData.images && rawData.images.length > 0 && !submitData.imgs) {
+			try {
+			  const uploadPromises = rawData.images.map(filePath => {
+				return http.upload(filePath, {
+				  url: API_ENDPOINTS.UPLOAD_API,
+				  name: 'file',
+				  showLoading: false
+				}).catch(err => {
+				  console.error('图片上传失败:', err)
+				  return null
+				})
+			  })
+			  
+			  const results = await Promise.all(uploadPromises)
+			  const successUrls = results.filter(url => url !== null)
+			  submitData.imgs = successUrls.join(',')
+			} catch (imgError) {
+			  console.error('图片上传失败:', imgError)
+			  // 继续提交，但不包含图片
+			}
+		  }
+		  
+		  // 提交数据
+		  await http.post(API_ENDPOINTS.ATTENDANCE_ADD_API, submitData, {
+			header: {
+			  'Content-Type': 'application/json'
+			}
+		  })
+		  
+		  // 标记为已上传
+		  markRecordUploaded(item.id, true)
+		  successCount++
+		  
+		} catch (error) {
+		  console.error('上传失败:', error)
+		  markRecordUploaded(item.id, false, error.message || '上传失败')
+		  failedCount++
+		}
+	  }
+	  
+	  uni.hideLoading()
+	  this.uploading = false
+	  
+	  if (successCount > 0) {
+		uni.showToast({
+		  title: `成功上传${successCount}条记录`,
+		  icon: 'success'
+		})
+	  }
+	  
+	  // 重新检测网络状态和待上传记录，更新提示显示状态
+	  // 使用 $nextTick 确保计算属性已更新
+	  this.$nextTick(() => {
+		this.checkNetworkStatus()
+	  })
 	}
   }
 }
@@ -321,6 +558,43 @@
 		border-radius: 198rpx;
 		color: white;
 		font-size: 30rpx; 
+	}
+	
+	/* 网络提示条 */
+	.network-notice {
+		margin: 20rpx 0;
+		background: #FFF8E1;
+		border: 2rpx solid #FFC107;
+		border-radius: 16rpx;
+		padding: 20rpx 30rpx;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		font-size: 26rpx;
+		color: #F57C00;
+	}
+	
+	.notice-upload-btn {
+		background: #FF9800;
+		color: #fff;
+		padding: 10rpx 30rpx;
+		border-radius: 30rpx;
+		font-size: 24rpx;
+	}
+	
+	/* 无网络提示条 */
+	.offline-notice {
+		margin: 20rpx 0;
+		background: #FFF3E0;
+		border: 2rpx solid #FF9800;
+		border-radius: 16rpx;
+		padding: 20rpx 30rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 26rpx;
+		color: #E65100;
+		text-align: center;
 	}
 
 	.user-card-Function{

@@ -118,6 +118,13 @@
 				"navigationBarTitleText": "页面详情",
 				"navigationBarTextStyle": "white"
 			}
+		},
+		{
+			"path": "pages/home/level/BindDevice",
+			"style": {
+				"navigationBarTitleText": "绑定设备",
+				"navigationBarTextStyle": "white"
+			}
 		}
 		
 	

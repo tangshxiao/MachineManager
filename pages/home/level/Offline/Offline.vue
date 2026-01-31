@@ -7,6 +7,11 @@
       <view class="notice-upload-btn" @click="uploadAll">立即上传</view>
     </view>
 
+    <!-- 无网络提示 -->
+    <view class="offline-notice" v-if="!isOnline && hasPendingRecords">
+      <text>当前无网络，数据已本地缓存，已缓存数据{{ stats.pending }}条</text>
+    </view>
+
     <view class="stats-card">
       <view class="stat-item">
         <text class="stat-num blue">{{ stats.total }}</text>
@@ -114,7 +119,8 @@ export default {
       isSelectMode: false,
       showNetworkNotice: false,
       uploadResult: null,
-      uploading: false
+      uploading: false,
+      isOnline: true // 网络状态
     };
   },
   
@@ -173,10 +179,12 @@ export default {
         uni.getNetworkType({
           success: (res) => {
             const isOnline = res.networkType !== 'none' && res.networkType !== 'unknown';
+            this.isOnline = isOnline;
             this.showNetworkNotice = isOnline && this.hasPendingRecords;
             resolve(isOnline);
           },
           fail: () => {
+            this.isOnline = false;
             this.showNetworkNotice = false;
             resolve(false);
           }
@@ -506,6 +514,21 @@ export default {
   padding: 10rpx 30rpx;
   border-radius: 30rpx;
   font-size: 24rpx;
+}
+
+/* 无网络提示条 */
+.offline-notice {
+  margin: 20rpx 30rpx;
+  background: #FFF3E0;
+  border: 2rpx solid #FF9800;
+  border-radius: 16rpx;
+  padding: 20rpx 30rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26rpx;
+  color: #E65100;
+  text-align: center;
 }
 
 /* 列表卡片 */
