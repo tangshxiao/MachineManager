@@ -51,11 +51,6 @@
       </view>
       <image src="/static/icon_right_jt.png" mode="aspectFill" class="arrow-icon"></image>
     </view>
-
-    <!-- Logout Button -->
-    <view class="logout-btn" @click="handleLogout">
-      <text>退出登录</text>
-    </view>
   </view>
 </template>
 
@@ -118,28 +113,7 @@ export default {
 		uni.navigateTo({
 		  url: '/pages/home/level/Offline/Offline'
 		});
-	},
-	
-    handleLogout() {
-      const that = this
-      uni.showModal({
-        title: '提示',
-        content: '确定要退出登录吗？',
-        success: function (res) {
-          if (res.confirm) {
-            console.log('用户确认退出登录')
-            // 清除选择的项目 IDs
-            uni.removeStorageSync('selectedProjectIds')
-            // 清除 token
-            uni.removeStorageSync('token')
-            // 跳转到选择项目页面
-            uni.reLaunch({
-              url: '/pages/index/index'
-            })
-          }
-        }
-      });
-    }
+	}
   }
 }
 </script>
@@ -298,23 +272,6 @@ export default {
 .arrow-icon {
   width: 28rpx;
   height: 28rpx;
-}
-
-/* Logout Button */
-.logout-btn {
-  background: #ffffff;
-  color: #8A8E9A;
-  font-size: 32rpx;
-  font-weight: 500;
-  text-align: center;
-  padding: 30rpx 0;
-  border-radius: 198rpx;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
-  border: none;
-  position: absolute;
-  bottom: 110rpx;
-  left: 30rpx;
-  right: 30rpx;
 }
 
 /* Icon Font */

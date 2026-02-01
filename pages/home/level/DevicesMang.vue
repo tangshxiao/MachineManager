@@ -10,10 +10,10 @@
           @input="onSearch"
           style="flex:1;padding-left:66rpx;margin-left:30rpx;"
         />
-	  <view class="search-box-btn" @click="newly">
+	  <!-- <view class="search-box-btn" @click="newly">
 	  	<image src="/static/icon_add_devices.png" style="width:40rpx;height:40rpx; "></image>
 	  	添加设备
-	  </view>
+	  </view> -->
     </view>
 
     <!-- 分类筛选 -->
@@ -37,22 +37,36 @@
         @click="goToDeviceDetail(item)"
       >
 	  <view class="device-item-box">
-			  <view class="">
+			  <view class="device-item-left">
 				   <view class="device-item-text">
-						<view class="">
-							{{ item.deviceNo }}
-						</view>
-						<view class="">
-							{{ item.name }}
-						</view>
+						<text class="device-no">{{ item.deviceNo }}</text>
+						<text class="device-name">{{ item.name }}</text>
 					</view>
 					<view class="device-item-time">
 						<image src="/static/icon_time_img.png" style="width: 22rpx; height: 22rpx;"></image>
-            最后打卡时间:{{ item.lastTime }}
+						<text>最后打卡时间:{{ item.lastTime }}</text>
 					</view>
 			   </view>
-			   <view :class="['status-tag', item.statuss]">
-					{{ item.statuss === 'normal'?'正常': item.statuss==='warning'?'警告':'故障'}}
+			   <view class="device-item-right">
+				   <view :class="['status-tag', getStatusClass(item.status)]">
+						{{ getStatusText(item.status) }}
+				   </view>
+				   <!-- <view class="status-buttons">
+					   <view 
+						   class="status-btn using-btn" 
+						   :class="{ active: item.status === 1 }"
+						   @click.stop="updateDeviceStatus(item, 1)"
+					   >
+						   在用
+					   </view>
+					   <view 
+						   class="status-btn maintenance-btn" 
+						   :class="{ active: item.status === 2 }"
+						   @click.stop="updateDeviceStatus(item, 2)"
+					   >
+						   维修
+					   </view>
+				   </view> -->
 			   </view>
 	   </view>
       </view>
@@ -84,9 +98,8 @@ export default {
       currentTab: "all",  // 当前分类
       tabs: [
         { label: "全部", value: "all" },
-        { label: "正常", value: "正常" },
-        { label: "警告", value: "警告" },
-        { label: "故障", value: "故障" }
+        { label: "在用", value: "在用" },
+        { label: "维修", value: "维修" }
       ],
       // 设备列表（后端接口返回）
       deviceList: [],
@@ -162,9 +175,8 @@ export default {
 	  
 	  try {
 		const statusMap = {
-		  '正常': 0,
-		  '警告': 1,
-		  '故障': 2
+		  '在用': 1,
+		  '维修': 2
 		};
 		const status = statusMap[this.currentTab];
 		const nextPage = reset ? 1 : this.deviceCurrent + 1;
@@ -175,7 +187,7 @@ export default {
 		  uni.showToast({
 			title: '请先选择项目',
 			icon: 'none'
-		  });
+		  }); 
 		  return;
 		}
 		// 取第一个项目ID作为pid
@@ -188,30 +200,20 @@ export default {
 		  keyword: this.keyword,
 		  pid: pid
 		};
-		// 全部时不传 status，其他状态传 0/1/2
+		// 全部时不传 status，其他状态传 1/2
 		if (status !== undefined) {
 		  params.status = status;
 		}
 		const res = await http.post(API_ENDPOINTS.DEVICE_LIST_API, params);
 		const records = (res && res.records) || [];
 		
-		// 将后端返回的 status(0/1/2) 转成页面展示需要的字段
-		const statusDisplayMap = {
-		  0: { text: '正常', cls: 'normal' },
-		  1: { text: '警告', cls: 'warning' },
-		  2: { text: '故障', cls: 'error' }
-		};
-		
+		// 保留原始的 status 数值（0进场 1在用 2维修 3退场）
+		// 不需要转换，直接使用原始数据
 		const mappedRecords = records.map(item => {
-		  const s = statusDisplayMap[item.status];
-		  if (s) {
-			return {
-			  ...item,
-			  status: s.text,
-			  statuss: s.cls
-			};
-		  }
-		  return item;
+		  return {
+			...item,
+			// status 保持原始值 0/1/2/3
+		  };
 		});
 		
 		if (reset) {
@@ -245,6 +247,26 @@ export default {
 			  url:'/pages/home/level/Newly'
 		  });
 	},
+	// 获取状态文字
+	getStatusText(status) {
+	  const statusMap = {
+		0: '进场',
+		1: '在用',
+		2: '维修',
+		3: '退场'
+	  };
+	  return statusMap[status] || '';
+	},
+	// 获取状态样式类
+	getStatusClass(status) {
+	  const statusMap = {
+		0: 'entry',      // 进场
+		1: 'using',      // 在用
+		2: 'maintenance', // 维修
+		3: 'exit'        // 退场
+	  };
+	  return statusMap[status] || '';
+	},
 	// 跳转到设备详情
 	goToDeviceDetail(item) {
 	  if (!item.id) {
@@ -257,7 +279,69 @@ export default {
 	  uni.navigateTo({
 		url: `/pages/home/level/record/device-detail/device-detail?id=${item.id}`
 	  })
+	},
+	// 更新设备状态
+	async updateDeviceStatus(item, status) {
+	  if (!item.id) {
+		uni.showToast({
+		  title: '设备信息错误',
+		  icon: 'none'
+		})
+		return
+	  }
+	  
+	  // 如果状态相同，不需要更新
+	  if (item.status === status) {
+		return
+	  }
+	  
+	  uni.showLoading({
+		title: '更新中...',
+		mask: true
+	  })
+	  
+	  try {
+		// 调用更新设备状态的接口
+		// 使用DEVICE_ADD_API，通常这个接口在传入id时会更新设备信息
+		const updateData = {
+		  id: item.id,
+		  status: status
 		}
+		
+		await http.post(API_ENDPOINTS.DEVICE_ADD_API, updateData, {
+		  header: {
+			'Content-Type': 'application/json'
+		  }
+		})
+		
+		// 更新本地列表中的状态
+		const index = this.deviceList.findIndex(d => d.id === item.id)
+		if (index !== -1) {
+		  // 直接更新 status 数值
+		  this.deviceList[index].status = status
+		}
+		
+		uni.hideLoading()
+		uni.showToast({
+		  title: '更新成功',
+		  icon: 'success'
+		})
+		
+		// 如果当前筛选的不是"全部"，可能需要刷新列表
+		if (this.currentTab !== 'all') {
+		  // 可以选择刷新列表或移除不符合筛选条件的项
+		  this.loadDeviceList(true)
+		}
+		
+	  } catch (error) {
+		console.error('更新设备状态失败:', error)
+		uni.hideLoading()
+		uni.showToast({
+		  title: error.msg || '更新失败，请重试',
+		  icon: 'none'
+		})
+	  }
+	}
   }
 };
 </script>
@@ -345,9 +429,31 @@ page {
   cursor: pointer;
 }
 
+.device-item-left {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+}
+
 .device-item-text{
-	 display: flex;
-	padding-bottom: 16rpx;;
+	display: flex;
+	align-items: center;
+	margin-bottom: 16rpx;
+	gap: 20rpx;
+	flex-wrap: nowrap;
+}
+
+.device-no {
+	font-size: 28rpx;
+	color: #333;
+	font-weight: 500;
+	white-space: nowrap;
+}
+
+.device-name {
+	font-size: 28rpx;
+	color: #333;
+	white-space: nowrap;
 }
 
 .empty {
@@ -358,10 +464,59 @@ page {
 .device-item-box{
 	width: 100%;
 	display: flex;
-	  justify-content: center; 
-	  align-items: center;    
-	  justify-content: space-between;
-	  padding: 0 34rpx;
+	justify-content: space-between;
+	align-items: flex-start;
+	padding: 0 34rpx;
+}
+
+.device-item-right {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 20rpx;
+	flex-shrink: 0;
+}
+
+.status-buttons {
+	display: flex;
+	gap: 20rpx;
+}
+
+.status-btn {
+	width: 100rpx;
+	height: 60rpx;
+	border-radius: 50rpx;
+	font-size: 26rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 2rpx solid #E0E0E0;
+	background-color: #FFFFFF;
+	color: #666;
+	white-space: nowrap;
+	transition: all 0.2s ease;
+}
+
+.status-btn.using-btn {
+	border-color: #39CCA6;
+	color: #39CCA6;
+}
+
+.status-btn.using-btn.active {
+	background-color: #39CCA6;
+	color: #FFFFFF;
+	border-color: #39CCA6;
+}
+
+.status-btn.maintenance-btn {
+	border-color: #FFB138;
+	color: #FFB138;
+}
+
+.status-btn.maintenance-btn.active {
+	background-color: #FFB138;
+	color: #FFFFFF;
+	border-color: #FFB138;
 }
 
 .status-tag{
@@ -373,19 +528,25 @@ page {
 	align-items: center;
 	justify-content: center;
 }
-.status-tag.normal{
-	background-color: #39CCA6;
+.status-tag.entry{
+	background-color: #FFB138; /* 黄色 */
 }
-.status-tag.warning{
-	background-color: #FFB138;
+.status-tag.using{
+	background-color: #39CCA6; /* 绿色 */
 }
-.status-tag.error{
-	background-color: #E55762;
+.status-tag.maintenance{
+	background-color: #E55762; /* 红色 */
+}
+.status-tag.exit{
+	background-color: #FFB138; /* 黄色 */
 }
 
 .device-item-time{
 	color: #AEB0B9;
-	font-size: 28rpx;
+	font-size: 24rpx;
+	display: flex;
+	align-items: center;
+	gap: 8rpx;
 }
 
 /* 加载状态 */

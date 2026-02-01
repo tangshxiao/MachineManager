@@ -148,8 +148,10 @@ export default {
 	  deviceLoading: false, // 设备列表加载中
 	  deviceSearchTimer: null, // 搜索防抖定时器
 	  dropdownTop: 0, // 下拉列表顶部位置
-	  equipment: ["进场", "出场"],
-	  sele: "请选择设备类型",
+	  equipment: [], // 异常上报类型列表（从接口获取）
+	  exceptionTypeList: [], // 异常上报类型完整数据
+	  selectedTypeValue: "", // 选中的异常上报类型值
+	  sele: "请选择异常类型",
 	  beizhu: "",
 	  count: 0,
 	  enterTime: "",
@@ -170,6 +172,8 @@ export default {
     // 组件挂载时初始化日期时间选择器
     this.initDateTimePicker();
     this.getEnterTime();
+    // 加载异常上报类型列表
+    this.loadExceptionTypes();
   },
   methods: {
 	// 处理设备输入框聚焦
@@ -276,9 +280,46 @@ export default {
 	  this.errorShebie = "";
 	},
 	
+	// 加载异常上报类型列表
+	async loadExceptionTypes() {
+	  try {
+		const res = await http.post(API_ENDPOINTS.DICT_LIST_API, {
+		  code: 'exception_report_type'
+		}, {
+		  header: {
+			'Content-Type': 'application/x-www-form-urlencoded'
+		  }
+		});
+		
+		// http.post 在成功时已经返回了 data.data，所以 res 就是数组
+		if (res && Array.isArray(res) && res.length > 0) {
+		  // 保存完整数据
+		  this.exceptionTypeList = res;
+		  // 提取 label 用于 picker 显示
+		  this.equipment = res.map(item => item.label);
+		} else {
+		  console.error('获取异常上报类型失败: 数据格式错误', res);
+		  uni.showToast({
+			title: '加载异常类型失败',
+			icon: 'none'
+		  });
+		}
+	  } catch (e) {
+		console.error('获取异常上报类型失败:', e);
+		uni.showToast({
+		  title: '加载异常类型失败',
+		  icon: 'none'
+		});
+	  }
+	},
+	
 	openchange(e) {
 	  const index = e.detail.value;
-	  this.sele = this.equipment[index];
+	  if (this.exceptionTypeList && this.exceptionTypeList[index]) {
+		this.sele = this.exceptionTypeList[index].label;
+		this.selectedTypeValue = this.exceptionTypeList[index].value;
+		this.picker = ""; // 清除错误提示
+	  }
 	  // 关闭设备选择列表
 	  this.showDeviceList = false;
 	},
@@ -534,6 +575,23 @@ export default {
 		})
 	},
 	
+	// 清空表单
+	resetForm() {
+		this.shebie = "";
+		this.deviceId = "";
+		this.deviceKeyword = "";
+		this.selectedTypeValue = "";
+		this.sele = "请选择异常类型";
+		this.beizhu = "";
+		this.count = 0;
+		this.images = [];
+		this.errorShebie = "";
+		this.picker = "";
+		this.showDeviceList = false;
+		// 重置时间为当前时间
+		this.getEnterTime();
+	},
+	
 	// 提交上报
 	async submit() {
 	  // 表单验证
@@ -547,8 +605,8 @@ export default {
 		// 	return;
 		//   }
 	  
-	  if (this.sele == "请选择设备类型") {
-		this.picker = "请选择设备类型";
+	  if (this.sele == "请选择异常类型" || !this.selectedTypeValue) {
+		this.picker = "请选择异常类型";
 		return;
 	  }
 	  
@@ -589,10 +647,7 @@ export default {
 		  mask: true
 		});
 		
-		// 1. 获取位置信息
-		await this.getLocation();
-		
-		// 2. 上传图片（离线时也尝试上传，失败则在离线数据中保存图片路径）
+		// 1. 上传图片（离线时也尝试上传，失败则在离线数据中保存图片路径）
 		let imgs = '';
 		try {
 			imgs = await this.uploadImages();
@@ -603,28 +658,24 @@ export default {
 			console.warn('图片上传失败，将在离线数据中保存图片路径', imgError);
 		}
 		
-		// 3. 确定类型：0进场 1离场
-		const type = this.sele === "进场" ? 0 : 1;
+		// 2. 使用选中的异常类型值
+		const type = parseInt(this.selectedTypeValue) || 0;
 		
-		// 4. 格式化时间
-		let timeStr = this.enterTime;
-		if (!timeStr.includes(':')) {
-			timeStr = timeStr + ' 00:00:00';
-		} else if (timeStr.split(':').length === 2) {
-			timeStr = timeStr + ':00';
+		// 3. 格式化时间
+		let createTime = this.enterTime;
+		if (!createTime.includes(':')) {
+			createTime = createTime + ' 00:00:00';
+		} else if (createTime.split(':').length === 2) {
+			createTime = createTime + ':00';
 		}
 		
-		// 5. 构建提交数据
+		// 4. 构建提交数据（新接口只需要这些字段）
 		const submitData = {
-			deviceId: this.deviceId,
+			deviceId: parseInt(this.deviceId) || 0,
 			type: type,
-			address: this.address || "",
-			lng: this.lng || "",
-			lat: this.lat || "",
-			imgs: imgs,
 			remark: this.beizhu.trim(),
-			time: timeStr,
-			status: 1 // 1异常（因为这是异常上报）
+			imgs: imgs || "",
+			createTime: createTime
 		};
 		
 		// 6. 检测网络状态
@@ -639,14 +690,10 @@ export default {
 				deviceNo: this.shebie,
 				deviceName: '', // 异常上报可能没有设备名称
 				tag: '异常上报',
-				time: timeStr,
-				address: this.address || "",
-				lng: this.lng || "",
-				lat: this.lat || "",
+				time: createTime,
 				imgs: imgs || "",
 				images: this.images || [], // 保存本地图片路径
 				remark: this.beizhu.trim(),
-				status: 1, // 异常状态
 				data: JSON.stringify(submitData)
 			};
 			
@@ -661,10 +708,8 @@ export default {
 					mask: true
 				});
 				
-				// 延迟返回上一页
-				setTimeout(() => {
-					uni.navigateBack();
-				}, 1500);
+				// 清空表单内容
+				this.resetForm();
 			} else {
 				// 存储失败（可能是空间不足）
 				uni.showModal({
@@ -680,32 +725,22 @@ export default {
 		}
 		
 		// 在线状态，正常提交
-		if (!imgs) {
-			uni.hideLoading();
-			uni.showToast({
-				title: "图片上传失败",
-				icon: "none"
-			});
-			this.submitting = false;
-			return;
-		}
+		// 注意：新接口不强制要求图片，所以移除图片验证
 		
-		const result = await http.post(API_ENDPOINTS.ATTENDANCE_ADD_API, submitData, {
+		const result = await http.post(API_ENDPOINTS.REPORT_SAVE_API, submitData, {
 		  header: {
 			'Content-Type': 'application/json'
 		  }
 		});
 		
 		uni.hideLoading();
-			  uni.showToast({
+		uni.showToast({
 		  title: "提交成功",
-				icon: "success"
-			  });
+		  icon: "success"
+		});
 		
-		// 提交成功后，延迟返回上一页
-		setTimeout(() => {
-		  uni.navigateBack();
-		}, 1500);
+		// 提交成功后，清空表单内容
+		this.resetForm();
 		
 	  } catch (error) {
 		console.error('提交失败:', error);
@@ -713,32 +748,24 @@ export default {
 		
 		// 如果网络请求失败，尝试保存到离线缓存
 		try {
-			const timeStr = this.enterTime.split(':').length === 2 ? this.enterTime + ':00' : this.enterTime;
-			const type = this.sele === "进场" ? 0 : 1;
+			const createTime = this.enterTime.split(':').length === 2 ? this.enterTime + ':00' : this.enterTime;
+			const type = parseInt(this.selectedTypeValue) || 0;
 			
 			const cacheData = {
 				type: 'report',
 				deviceNo: this.shebie,
 				deviceName: '',
 				tag: '异常上报',
-				time: timeStr,
-				address: this.address || "",
-				lng: this.lng || "",
-				lat: this.lat || "",
+				time: createTime,
 				imgs: "",
 				images: this.images || [],
 				remark: this.beizhu.trim(),
-				status: 1,
 				data: JSON.stringify({
-					deviceId: this.deviceId,
+					deviceId: parseInt(this.deviceId) || 0,
 					type: type,
-					address: this.address || "",
-					lng: this.lng || "",
-					lat: this.lat || "",
-					imgs: "",
 					remark: this.beizhu.trim(),
-					time: timeStr,
-					status: 1
+					imgs: "",
+					createTime: createTime
 				})
 			};
 			
@@ -749,9 +776,8 @@ export default {
 					icon: 'none',
 					duration: 3000
 				});
-				setTimeout(() => {
-					uni.navigateBack();
-				}, 1500);
+				// 清空表单内容
+				this.resetForm();
 			} else {
 				uni.showToast({
 					title: "提交失败，请重试",

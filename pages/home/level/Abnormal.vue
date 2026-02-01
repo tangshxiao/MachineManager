@@ -125,9 +125,7 @@
 <script>
 import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
-
-//模拟设备编号
-const validDevices = ["DEV001", "DEV002", "DEV003"];
+import { saveCacheRecord } from '@/utils/offlineCache.js'
 
 export default {
   data() {
@@ -140,8 +138,10 @@ export default {
       deviceLoading: false, // 设备列表加载中
       deviceSearchTimer: null, // 搜索防抖定时器
       dropdownTop: 0, // 下拉列表顶部位置
-      equipment: ["进场", "出场"],
-      sele: "请选择设备类型",
+      equipment: [], // 异常上报类型列表（从接口获取）
+      exceptionTypeList: [], // 异常上报类型完整数据
+      selectedTypeValue: "", // 选中的异常上报类型值
+      sele: "请选择异常类型",
       beizhu: "",
       count: 0,
       enterTime: "",
@@ -161,12 +161,22 @@ export default {
   onLoad() {
     this.initDateTimePicker(); // 初始化日期时间选择器
     this.getEnterTime(); // 页面初始化获取当前时间
+    // 加载异常上报类型列表
+    this.loadExceptionTypes();
   },
   methods: {
     // 处理设备输入框聚焦
     handleDeviceInputFocus() {
       this.showDeviceList = true;
       this.updateDropdownPosition();
+    },
+    
+    // 处理设备输入框失焦
+    handleDeviceInputBlur() {
+      // 延迟关闭，让点击事件先执行
+      setTimeout(() => {
+        this.showDeviceList = false;
+      }, 200);
     },
     
     // 更新下拉列表位置
@@ -272,9 +282,46 @@ export default {
       this.showDeviceList = false;
     },
     
+    // 加载异常上报类型列表
+    async loadExceptionTypes() {
+      try {
+        const res = await http.post(API_ENDPOINTS.DICT_LIST_API, {
+          code: 'exception_report_type'
+        }, {
+          header: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
+        });
+        
+        // http.post 在成功时已经返回了 data.data，所以 res 就是数组
+        if (res && Array.isArray(res) && res.length > 0) {
+          // 保存完整数据
+          this.exceptionTypeList = res;
+          // 提取 label 用于 picker 显示
+          this.equipment = res.map(item => item.label);
+        } else {
+          console.error('获取异常上报类型失败: 数据格式错误', res);
+          uni.showToast({
+            title: '加载异常类型失败',
+            icon: 'none'
+          });
+        }
+      } catch (e) {
+        console.error('获取异常上报类型失败:', e);
+        uni.showToast({
+          title: '加载异常类型失败',
+          icon: 'none'
+        });
+      }
+    },
+    
     openchange(e) {
       const index = e.detail.value;
-      this.sele = this.equipment[index];
+      if (this.exceptionTypeList && this.exceptionTypeList[index]) {
+        this.sele = this.exceptionTypeList[index].label;
+        this.selectedTypeValue = this.exceptionTypeList[index].value;
+        this.picker = ""; // 清除错误提示
+      }
       // 关闭设备选择列表
       this.showDeviceList = false;
     },
@@ -516,6 +563,20 @@ export default {
       return successUrls.join(',');
     },
     
+    // 检测网络状态
+    async checkNetworkStatus() {
+      return new Promise((resolve) => {
+        uni.getNetworkType({
+          success: (res) => {
+            resolve(res.networkType !== 'none' && res.networkType !== 'unknown')
+          },
+          fail: () => {
+            resolve(false)
+          }
+        })
+      })
+    },
+    
     // 提交上报
     async submit() {
       // 表单验证
@@ -524,13 +585,8 @@ export default {
         return;
       }
       
-      // if (!validDevices.includes(this.shebie)) {
-      //   this.errorShebie = "该设备编号不存在，请重新输入";
-      //   return;
-      // }
-      
-      if (this.sele == "请选择设备类型") {
-        this.picker = "请选择设备类型";
+      if (this.sele == "请选择异常类型" || !this.selectedTypeValue) {
+        this.picker = "请选择异常类型";
         return;
       }
       
@@ -571,38 +627,89 @@ export default {
           mask: true
         });
         
-        // 1. 获取位置信息
-        await this.getLocation();
+        // 1. 上传图片（离线时也尝试上传，失败则在离线数据中保存图片路径）
+        let imgs = '';
+        try {
+          imgs = await this.uploadImages();
+          if (!imgs) {
+            console.warn('图片上传失败，将在离线数据中保存图片路径');
+          }
+        } catch (imgError) {
+          console.warn('图片上传失败，将在离线数据中保存图片路径', imgError);
+        }
         
-        // 2. 上传图片
-        const imgs = await this.uploadImages();
-        if (!imgs) {
+        // 2. 使用选中的异常类型值
+        const type = parseInt(this.selectedTypeValue) || 0;
+        
+        // 3. 格式化时间
+        let createTime = this.enterTime;
+        if (!createTime.includes(':')) {
+          createTime = createTime + ' 00:00:00';
+        } else if (createTime.split(':').length === 2) {
+          createTime = createTime + ':00';
+        }
+        
+        // 4. 构建提交数据（新接口只需要这些字段）
+        const submitData = {
+          deviceId: parseInt(this.deviceId) || 0,
+          type: type,
+          remark: this.beizhu.trim(),
+          imgs: imgs || "",
+          createTime: createTime
+        };
+        
+        // 5. 检测网络状态
+        const isOnline = await this.checkNetworkStatus();
+        
+        if (!isOnline) {
+          // 离线状态，保存到本地缓存
           uni.hideLoading();
-          uni.showToast({
-            title: "图片上传失败",
-            icon: "none"
-          });
+          
+          const cacheData = {
+            type: 'report', // 异常上报类型
+            deviceNo: this.shebie,
+            deviceName: '', // 异常上报可能没有设备名称
+            tag: '异常上报',
+            time: createTime,
+            imgs: imgs || "",
+            images: this.images || [], // 保存本地图片路径
+            remark: this.beizhu.trim(),
+            data: JSON.stringify(submitData)
+          };
+          
+          const result = saveCacheRecord(cacheData);
+          
+          if (result.success) {
+            // 显示黄色提示
+            uni.showToast({
+              title: '当前无网络，数据已本地缓存',
+              icon: 'none',
+              duration: 3000,
+              mask: true
+            });
+            
+            // 延迟返回上一页
+            setTimeout(() => {
+              uni.navigateBack();
+            }, 1500);
+          } else {
+            // 存储失败（可能是空间不足）
+            uni.showModal({
+              title: '提示',
+              content: result.error || '缓存失败，请重试',
+              showCancel: false,
+              confirmText: '确定',
+              confirmColor: '#E02020'
+            });
+          }
           this.submitting = false;
           return;
         }
         
-        // 3. 确定类型：0进场 1离场
-        const type = this.sele === "进场" ? 0 : 1;
+        // 在线状态，正常提交
+        // 注意：新接口不强制要求图片，所以移除图片验证
         
-        // 4. 提交上报数据
-        const submitData = {
-          deviceId: this.deviceId,
-          type: type,
-          address: this.address || "",
-          lng: this.lng || "",
-          lat: this.lat || "",
-          imgs: imgs,
-          remark: this.beizhu.trim(),
-          time: this.enterTime+":00",
-          status: 1 // 1异常（因为这是异常上报）
-        };
-        
-        const result = await http.post(API_ENDPOINTS.ATTENDANCE_ADD_API, submitData, {
+        const result = await http.post(API_ENDPOINTS.REPORT_SAVE_API, submitData, {
           header: {
             'Content-Type': 'application/json'
           }
@@ -622,10 +729,52 @@ export default {
       } catch (error) {
         console.error('提交失败:', error);
         uni.hideLoading();
-        uni.showToast({
-          title: "提交失败，请重试",
-          icon: "none"
-        });
+        
+        // 如果网络请求失败，尝试保存到离线缓存
+        try {
+          const createTime = this.enterTime.split(':').length === 2 ? this.enterTime + ':00' : this.enterTime;
+          const type = parseInt(this.selectedTypeValue) || 0;
+          
+          const cacheData = {
+            type: 'report',
+            deviceNo: this.shebie,
+            deviceName: '',
+            tag: '异常上报',
+            time: createTime,
+            imgs: "",
+            images: this.images || [],
+            remark: this.beizhu.trim(),
+            data: JSON.stringify({
+              deviceId: parseInt(this.deviceId) || 0,
+              type: type,
+              remark: this.beizhu.trim(),
+              imgs: "",
+              createTime: createTime
+            })
+          };
+          
+          const cacheResult = saveCacheRecord(cacheData);
+          if (cacheResult.success) {
+            uni.showToast({
+              title: '提交失败，数据已缓存',
+              icon: 'none',
+              duration: 3000
+            });
+            setTimeout(() => {
+              uni.navigateBack();
+            }, 1500);
+          } else {
+            uni.showToast({
+              title: "提交失败，请重试",
+              icon: "none"
+            });
+          }
+        } catch (cacheError) {
+          uni.showToast({
+            title: "提交失败，请重试",
+            icon: "none"
+          });
+        }
       } finally {
         this.submitting = false;
       }
