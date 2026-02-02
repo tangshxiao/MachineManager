@@ -61,6 +61,54 @@
       
       <view class="bottom-spacer"></view>
     </view>
+    
+    <!-- 详情对话框 -->
+    <view class="modal-mask" v-if="showDetailModal" @tap="closeDetailModal">
+      <view class="modal-content" @tap.stop>
+        <view class="modal-header">
+          <text class="modal-title">设备详情</text>
+          <view class="modal-close" @tap="closeDetailModal">
+            <text class="close-icon">×</text>
+          </view>
+        </view>
+        
+        <view class="modal-body" v-if="currentDetail">
+          <view class="detail-item">
+            <text class="detail-label">设备编号</text>
+            <text class="detail-value">{{ currentDetail.deviceNo || '-' }}</text>
+          </view>
+          
+          <view class="detail-item">
+            <text class="detail-label">设备名称</text>
+            <text class="detail-value">{{ currentDetail.name || '-' }}</text>
+          </view>
+          
+          <view class="detail-item">
+            <text class="detail-label">打卡类型</text>
+            <text class="detail-value">{{ getStatusText(currentDetail.type) }}</text>
+          </view>
+          
+          <view class="detail-item">
+            <text class="detail-label">打卡时间</text>
+            <text class="detail-value">{{ currentDetail.time || '-' }}</text>
+          </view>
+          
+          <view class="detail-item">
+            <text class="detail-label">位置</text>
+            <text class="detail-value">{{ currentDetail.address || '-' }}</text>
+          </view>
+          
+          <view class="detail-item">
+            <text class="detail-label">GPS坐标</text>
+            <text class="detail-value">{{ getGpsCoordinate(currentDetail.lng, currentDetail.lat) }}</text>
+          </view>
+        </view>
+        
+        <view class="modal-footer">
+          <button class="modal-close-btn" @tap="closeDetailModal">关闭</button>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -78,7 +126,9 @@ export default {
       loading: false,
       refreshing: false,
       hasMore: true,
-      loadMoreTimer: null // 防抖定时器
+      loadMoreTimer: null, // 防抖定时器
+      showDetailModal: false, // 是否显示详情对话框
+      currentDetail: null // 当前详情数据
     }
   },
   
@@ -96,11 +146,23 @@ export default {
   methods: {
 	  
 	  Details(item) {
-	    // 打卡记录详情页（如果需要可以单独实现，这里暂时保留）
-	    // uni.showToast({
-	    //   title: '打卡记录详情功能待开发',
-	    //   icon: 'none'
-	    // })
+	    // 显示详情对话框
+	    this.currentDetail = item
+	    this.showDetailModal = true
+	  },
+	  
+	  // 关闭详情对话框
+	  closeDetailModal() {
+	    this.showDetailModal = false
+	    this.currentDetail = null
+	  },
+	  
+	  // 获取GPS坐标字符串
+	  getGpsCoordinate(lng, lat) {
+	    if (lng && lat) {
+	      return `${lng}, ${lat}`
+	    }
+	    return '-'
 	  },
 	  
     // 加载打卡记录列表
@@ -179,10 +241,12 @@ export default {
     
     // 获取状态文本
     getStatusText(type) {
-      // type: 0进场 1离场
+      // type: 0进场 1在用 2维修 3退场
       const statusMap = {
         0: '进场',
-        1: '离场'
+        1: '在用',
+        2: '维修',
+        3: '退场'
       }
       return statusMap[type] || '未知'
     },
@@ -478,6 +542,109 @@ page {
   height: 30rpx;
   border: 4rpx solid #fff;
   border-radius: 4rpx;
+}
+
+/* 详情对话框样式 */
+.modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  width: 640rpx;
+  background-color: #FFFFFF;
+  border-radius: 16rpx;
+  overflow: hidden;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 32rpx 32rpx 24rpx;
+  border-bottom: 1rpx solid #F0F0F0;
+}
+
+.modal-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333333;
+}
+
+.modal-close {
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.close-icon {
+  font-size: 48rpx;
+  color: #999999;
+  line-height: 1;
+}
+
+.modal-body {
+  padding: 32rpx;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.detail-item {
+  margin-bottom: 32rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-item:last-child {
+  margin-bottom: 0;
+}
+
+.detail-label {
+  font-size: 26rpx;
+  color: #999999;
+  margin-bottom: 12rpx;
+}
+
+.detail-value {
+  font-size: 28rpx;
+  color: #333333;
+  word-break: break-all;
+}
+
+.modal-footer {
+  padding: 24rpx 32rpx 32rpx;
+  border-top: 1rpx solid #F0F0F0;
+}
+
+.modal-close-btn {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  background-color: #F5F5F5;
+  color: #333333;
+  font-size: 32rpx;
+  border-radius: 44rpx;
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.modal-close-btn:active {
+  opacity: 0.8;
 }
 
 </style>

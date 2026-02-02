@@ -79,7 +79,8 @@ const request = (options = {}) => {
 
         if (statusCode === 200) {
           // 按常见后端返回结构：{ code, data, msg }
-          if (data && (data.code === 0 || data.code === 200 || data.code === '0')) {
+          // 只有 code === 0 才是正常
+          if (data && data.code === 0) {
             resolve(data.data)
           } else {
             uni.showToast({
@@ -202,7 +203,8 @@ const upload = (filePath, config = {}) => {
             header: res.header || {}
           }, requestId, duration, url))
           
-          if (data && (data.code === 0 || data.code === 200 || data.code === '0')) {
+          // 只有 code === 0 才是正常
+          if (data && data.code === 0) {
             resolve(data.data)
           } else {
             uni.showToast({

@@ -40,13 +40,13 @@
 					</view>
 				</view>
 			</view>
-			<view class="user-card-Record">
+			<view class="user-card-Record" @click="goToAllRecords">
 				<view class="user-card-Record-text">
 					<view class="user-card-Record-text-img">
 					</view>
 					最近打卡纪录
 				</view>
-					
+					<!-- @click.stop="goToRecordDetail(item)" -->
 						<view class="user-card-Record-Hide">
 							<view
 								class="user-card-Record-Component"
@@ -59,16 +59,9 @@
 										<view>{{ item.deviceNo || '-' }}</view>
 									</view>
 									<button
-										class="user-card-Record-Component-btn"
-										v-if="item.type === 0"
+										:class="getStatusButtonClass(item.type)"
 									>
-										进场
-									</button>
-									<button
-										class="user-card-Record-Component-btnt"
-										v-else
-									>
-										退场
+										{{ getStatusText(item.type) }}
 									</button>
 								</view>
 								<view class="record-time">
@@ -102,9 +95,11 @@
 									<view class="record-info">
 										<view>{{ item.deviceNo || '-' }} {{ item.name || '' }}</view>
 									</view>
-									<button class="user-card-Equipment-Component-btn1" v-if="item.status === 0">正常</button>
-									<button class="user-card-Record-Component-btnt2" v-else-if="item.status === 1">警告</button>
-									<button class="user-card-Record-Component-btnt3" v-else>故障</button>
+									<button
+										:class="getStatusButtonClass(item.status)"
+									>
+										{{ getStatusText(item.status) }}
+									</button>
 								</view>
 									<view class="record-time">
 										<image src="/static/icon_time_img.png" style="width: 22rpx; height: 22rpx; margin-right: 8rpx;"></image>
@@ -218,8 +213,7 @@
         const res = await http.post(API_ENDPOINTS.DEVICE_LIST_API, {
           sort: 0,
           current: this.deviceCurrent,
-          size: this.deviceSize,
-          pid: pid
+          size: this.deviceSize
         })
         const records = (res && res.records) || []
         this.deviceList = records
@@ -299,9 +293,21 @@
     					// 检查二维码状态：0未绑定 1已绑定
     					if (qrDetails && qrDetails.status !== undefined) {
     						if (qrDetails.status === 0) {
-    							// 未绑定，跳转到绑定设备页面
-    							uni.navigateTo({
-    								url: '/pages/home/level/BindDevice?qrCode=' + encodeURIComponent(jieguo.result)
+    							// 未绑定，弹出对话框提示用户
+    							uni.showModal({
+    								title: '提示',
+    								content: '该设备未绑定，是否前往绑定设备？',
+    								confirmText: '确认',
+    								cancelText: '取消',
+    								success: (res) => {
+    									if (res.confirm) {
+    										// 用户点击确认，跳转到绑定设备页面
+    										uni.navigateTo({
+    											url: '/pages/home/level/BindDevice?qrCode=' + encodeURIComponent(jieguo.result)
+    										});
+    									}
+    									// 用户点击取消，直接关闭对话框，不做任何操作
+    								}
     							});
     						} else if (qrDetails.status === 1) {
     							// 已绑定，跳转到打卡页面
@@ -385,6 +391,55 @@
 	  uni.navigateTo({
 		url: `/pages/home/level/record/device-detail/device-detail?id=${item.id}`
 	  })
+	},
+	
+	// 跳转到所有打卡数据
+	goToAllRecords() {
+	  uni.navigateTo({
+		url: '/pages/home/level/record/record'
+	  })
+	},
+	
+	// 跳转到打卡记录详情（设备详情页）
+	goToRecordDetail(item) {
+	  if (!item.deviceId && !item.id) {
+		uni.showToast({
+		  title: '设备信息错误',
+		  icon: 'none'
+		})
+		return
+	  }
+	  // 使用deviceId或id跳转到设备详情页
+	  const deviceId = item.deviceId || item.id
+	  uni.navigateTo({
+		url: `/pages/home/level/record/device-detail/device-detail?id=${deviceId}`
+	  })
+	},
+	
+	// 获取状态文字：0进场 1在用 2维修 3退场
+	getStatusText(type) {
+	  const statusMap = {
+		0: '进场',
+		1: '在用',
+		2: '维修',
+		3: '退场'
+	  }
+	  return statusMap[type] || '未知'
+	},
+	
+	// 获取状态按钮样式类
+	getStatusButtonClass(type) {
+	  // 0进场-蓝色, 1在用-绿色, 2维修-橙色, 3退场-灰色
+	  if (type === 0) {
+		return 'user-card-Record-Component-btn' // 进场-蓝色
+	  } else if (type === 1) {
+		return 'user-card-Record-Component-btn-using' // 在用-绿色
+	  } else if (type === 2) {
+		return 'user-card-Record-Component-btn-maintenance' // 维修-橙色
+	  } else if (type === 3) {
+		return 'user-card-Record-Component-btnt' // 退场-灰色
+	  }
+	  return 'user-card-Record-Component-btnt' // 默认灰色
 	},
 	
 	// 检测网络状态
@@ -703,7 +758,29 @@
 	
 	.user-card-Record-Component-btn{
 		margin-right: 5rpx; 
-		background-color: #3AA7F9;
+		background-color: #3AA7F9; /* 进场-蓝色 */
+		width: 120rpx;
+		height: 60rpx;
+		line-height: 60rpx;
+		border-radius: 176rpx;
+		font-size: 28rpx; 
+		color: white;
+	}
+	
+	.user-card-Record-Component-btn-using{
+		margin-right: 5rpx; 
+		background-color: #39CCA6; /* 在用-绿色 */
+		width: 120rpx;
+		height: 60rpx;
+		line-height: 60rpx;
+		border-radius: 176rpx;
+		font-size: 28rpx; 
+		color: white;
+	}
+	
+	.user-card-Record-Component-btn-maintenance{
+		margin-right: 5rpx; 
+		background-color: #FFB647; /* 维修-橙色 */
 		width: 120rpx;
 		height: 60rpx;
 		line-height: 60rpx;
@@ -714,7 +791,7 @@
 	
 	.user-card-Record-Component-btnt{
 		margin-right: 5rpx; 
-		background-color: #A4B6D3;
+		background-color: #A4B6D3; /* 退场-灰色 */
 		width: 120rpx;
 		height: 60rpx;
 		line-height: 60rpx;

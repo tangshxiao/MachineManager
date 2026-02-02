@@ -529,7 +529,7 @@ page {
 	justify-content: center;
 }
 .status-tag.entry{
-	background-color: #FFB138; /* 黄色 */
+	background-color: #3AA7F9; /* 进场-蓝色 */
 }
 .status-tag.using{
 	background-color: #39CCA6; /* 绿色 */

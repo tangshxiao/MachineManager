@@ -50,8 +50,8 @@
 					  最后打卡时间:{{ item.lastTime }}
 					</view>
 			   </view>
-			   <view :class="['status-tag', item.statuss]">
-					{{ item.statuss === 'normal'?'正常': item.statuss==='warning'?'警告':'故障'}}
+			   <view :class="['status-tag', getStatusClass(item.status)]">
+					{{ getStatusText(item.status) }}
 			   </view>
 	   </view>
       </view>
@@ -85,9 +85,10 @@ export default {
       currentTab: "all",  // 当前分类
       tabs: [
         { label: "全部", value: "all" },
-        { label: "正常", value: "正常" },
-        { label: "警告", value: "警告" },
-        { label: "故障", value: "故障" }
+        { label: "进场", value: "进场" },
+        { label: "在用", value: "在用" },
+        { label: "维修", value: "维修" },
+        { label: "退场", value: "退场" }
       ],
       // 设备列表（后端接口返回）
       deviceList: [],
@@ -157,9 +158,10 @@ export default {
 	  
 	  try {
 		const statusMap = {
-		  '正常': 0,
-		  '警告': 1,
-		  '故障': 2
+		  '进场': 0,
+		  '在用': 1,
+		  '维修': 2,
+		  '退场': 3
 		};
 		const status = statusMap[this.currentTab];
 		const nextPage = reset ? 1 : this.deviceCurrent + 1;
@@ -183,30 +185,20 @@ export default {
 		  keyword: this.keyword,
 		  pid: pid
 		};
-		// 全部时不传 status，其他状态传 0/1/2
+		// 全部时不传 status，其他状态传 0/1/2/3
 		if (status !== undefined) {
 		  params.status = status;
 		}
 		const res = await http.post(API_ENDPOINTS.DEVICE_LIST_API, params);
 		const records = (res && res.records) || [];
 		
-		// 将后端返回的 status(0/1/2) 转成页面展示需要的字段
-		const statusDisplayMap = {
-		  0: { text: '正常', cls: 'normal' },
-		  1: { text: '警告', cls: 'warning' },
-		  2: { text: '故障', cls: 'error' }
-		};
-		
+		// 保留原始的 status 数值（0进场 1在用 2维修 3退场）
+		// 不需要转换，直接使用原始数据
 		const mappedRecords = records.map(item => {
-		  const s = statusDisplayMap[item.status];
-		  if (s) {
-			return {
-			  ...item,
-			  status: s.text,
-			  statuss: s.cls
-			};
-		  }
-		  return item;
+		  return {
+			...item,
+			// status 保持原始值 0/1/2/3
+		  };
 		});
 		
 		if (reset) {
@@ -240,7 +232,27 @@ export default {
 		  uni.navigateTo({
 			  url:'/pages/home/level/Newly'
 		  });
-		}
+		},
+	// 获取状态文字：0进场 1在用 2维修 3退场
+	getStatusText(status) {
+	  const statusMap = {
+		0: '进场',
+		1: '在用',
+		2: '维修',
+		3: '退场'
+	  };
+	  return statusMap[status] || '未知';
+	},
+	// 获取状态样式类
+	getStatusClass(status) {
+	  const statusMap = {
+		0: 'entry',      // 进场-黄色
+		1: 'using',      // 在用-绿色
+		2: 'maintenance', // 维修-红色
+		3: 'exit'        // 退场-黄色
+	  };
+	  return statusMap[status] || '';
+	}
   },
   
 };
@@ -353,15 +365,19 @@ page {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	font-size: 28rpx;
 }
-.status-tag.normal{
-	background-color: #39CCA6;
+.status-tag.entry{
+	background-color: #3AA7F9; /* 进场-蓝色 */
 }
-.status-tag.warning{
-	background-color: #FFB138;
+.status-tag.using{
+	background-color: #39CCA6; /* 在用-绿色 */
 }
-.status-tag.error{
-	background-color: #E55762;
+.status-tag.maintenance{
+	background-color: #E55762; /* 维修-红色 */
+}
+.status-tag.exit{
+	background-color: #FFB138; /* 退场-黄色 */
 }
 
 .device-item-time{

@@ -261,17 +261,7 @@ import { saveCacheRecord } from '@/utils/offlineCache.js'
 		 				} catch (e) {
 		 					uni.hideLoading();
 		 					console.error("处理二维码失败", e);
-		 					if (e.msg) {
-		 						uni.showToast({
-		 							title: e.msg,
-		 							icon: 'none'
-		 						});
-		 					} else {
-		 						uni.showToast({
-		 							title: '二维码格式错误',
-		 							icon: 'none'
-		 						});
-		 					}
+		 					// request.js 已经显示了 msg，这里只需要清空设备信息
 		 					// 容错：清空设备信息
 		 					this.shebei = '';
 		 					this.shengchan = '';
@@ -411,6 +401,7 @@ import { saveCacheRecord } from '@/utils/offlineCache.js'
 					 showLoading: false
 				 }).catch(err => {
 					 console.error('图片上传失败:', err);
+					 // request.js 已经显示了接口返回的 msg，这里只返回 null 表示失败
 					 return null;
 				 });
 			 });
@@ -573,6 +564,7 @@ import { saveCacheRecord } from '@/utils/offlineCache.js'
 				 }
 				 
 				 // 在线状态，正常提交
+				 // 如果 code !== 0，request.js 会显示 msg 并 reject，这里会被 catch 捕获
 				 const result = await http.post(API_ENDPOINTS.ATTENDANCE_ADD_API, submitData, {
 					 header: {
 						 'Content-Type': 'application/json'
@@ -593,6 +585,7 @@ import { saveCacheRecord } from '@/utils/offlineCache.js'
 			 } catch (error) {
 				 console.error('提交打卡失败:', error);
 				 uni.hideLoading();
+				 // request.js 已经显示了接口返回的 msg，这里只需要处理离线缓存逻辑
 				 
 				 // 如果网络请求失败，尝试保存到离线缓存
 				 try {

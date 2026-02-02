@@ -717,7 +717,7 @@ export default {
         
         uni.hideLoading();
         uni.showToast({
-          title: "提交成功",
+          title: "成功",
           icon: "success"
         });
         

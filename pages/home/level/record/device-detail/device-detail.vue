@@ -22,7 +22,7 @@
       <view class="section-header">
         <text class="section-title">历史打卡记录</text>
         <view class="filter-btn" @tap="handleFilter">
-          <text class="iconfont filter-icon">&#xe693;</text> <text>筛选</text>
+          <!-- <text class="iconfont filter-icon">&#xe693;</text> <text>筛选</text> -->
         </view>
       </view>
 
@@ -37,7 +37,7 @@
           <text class="empty-text">暂无数据</text>
         </view>
 
-        <view class="record-item" v-for="(item, index) in list" :key="index">
+        <view class="record-item" v-for="(item, index) in list" :key="index" @click="showRecordDetail(item)">
           <view class="ri-content">
             <view class="ri-left">
               <view class="user-info">
@@ -47,8 +47,8 @@
             </view>
             
             <view class="ri-right">
-              <view class="type-tag" :class="item.type === 0 ? 'tag-in' : 'tag-out'">
-                <text>{{ item.type === 0 ? '进场' : '离场' }}</text>
+              <view class="type-tag" :class="getRecordStatusClass(item.type)">
+                <text>{{ getRecordStatusText(item.type) }}</text>
               </view>
             </view>
           </view>
@@ -67,7 +67,7 @@
           </view>
 
           <view class="ri-location" v-if="item.address">
-            <text class="iconfont loc-icon">&#xe847;</text>
+            <text class="loc-icon">&#xe847;</text>
             <text class="loc-text">{{ item.address }}</text>
           </view>
         </view>
@@ -76,6 +76,54 @@
            <text class="loading-text">{{ loading ? '加载中...' : (hasMore ? '上拉加载更多' : '没有更多数据了') }}</text>
         </view>
 
+      </view>
+    </view>
+    
+    <!-- 详情对话框 -->
+    <view class="modal-mask" v-if="showDetailModal" @tap="closeDetailModal">
+      <view class="modal-content" @tap.stop>
+        <view class="modal-header">
+          <text class="modal-title">设备详情</text>
+          <view class="modal-close" @tap="closeDetailModal">
+            <text class="close-icon">×</text>
+          </view>
+        </view>
+        
+        <view class="modal-body" v-if="currentDetail">
+          <view class="detail-item">
+            <text class="detail-label">设备编号</text>
+            <text class="detail-value">{{ currentDetail.deviceNo || deviceInfo.deviceNo || '-' }}</text>
+          </view>
+          
+          <view class="detail-item">
+            <text class="detail-label">设备名称</text>
+            <text class="detail-value">{{ currentDetail.name || deviceInfo.name || deviceInfo.deviceName || '-' }}</text>
+          </view>
+          
+          <view class="detail-item">
+            <text class="detail-label">打卡类型</text>
+            <text class="detail-value">{{ getRecordStatusText(currentDetail.type) }}</text>
+          </view>
+          
+          <view class="detail-item">
+            <text class="detail-label">打卡时间</text>
+            <text class="detail-value">{{ formatTime(currentDetail.createTime || currentDetail.time) || '-' }}</text>
+          </view>
+          
+          <view class="detail-item">
+            <text class="detail-label">位置</text>
+            <text class="detail-value">{{ currentDetail.address || '-' }}</text>
+          </view>
+          
+          <view class="detail-item">
+            <text class="detail-label">GPS坐标</text>
+            <text class="detail-value">{{ getGpsCoordinate(currentDetail.lng, currentDetail.lat) }}</text>
+          </view>
+        </view>
+        
+        <view class="modal-footer">
+          <button class="modal-close-btn" @tap="closeDetailModal">关闭</button>
+        </view>
       </view>
     </view>
   </view>
@@ -119,7 +167,9 @@ export default {
         size: 10
       },
       list: [],
-      hasMore: true
+      hasMore: true,
+      showDetailModal: false, // 是否显示详情对话框
+      currentDetail: null // 当前详情数据
     }
   },
   onLoad(options) {
@@ -217,24 +267,46 @@ export default {
       }
     },
     
-    // 获取状态文本
+    // 获取状态文本：0进场 1在用 2维修 3退场
     getStatusText(status) {
-      // status: 0正常 1警告 2故障
       const statusMap = {
-        0: '正常',
-        1: '警告',
-        2: '故障'
+        0: '进场',
+        1: '在用',
+        2: '维修',
+        3: '退场'
       }
       return statusMap[status] || '未知'
     },
     
     // 获取状态样式类
     getStatusClass(status) {
-      // status: 0正常 1警告 2故障
-      if (status === 0) return 'status-normal'
-      if (status === 1) return 'status-warning'
-      if (status === 2) return 'status-abnormal'
-      return 'status-normal'
+      // 0进场-蓝色, 1在用-绿色, 2维修-红色, 3退场-黄色
+      if (status === 0) return 'status-entry'      // 进场-蓝色
+      if (status === 1) return 'status-using'     // 在用-绿色
+      if (status === 2) return 'status-maintenance' // 维修-红色
+      if (status === 3) return 'status-exit'      // 退场-黄色
+      return 'status-entry'
+    },
+    
+    // 获取打卡记录类型文本：0进场 1在用 2维修 3退场
+    getRecordStatusText(type) {
+      const statusMap = {
+        0: '进场',
+        1: '在用',
+        2: '维修',
+        3: '退场'
+      }
+      return statusMap[type] || '未知'
+    },
+    
+    // 获取打卡记录类型样式类
+    getRecordStatusClass(type) {
+      // 0进场-蓝色, 1在用-绿色, 2维修-红色, 3退场-黄色
+      if (type === 0) return 'tag-entry'      // 进场-蓝色
+      if (type === 1) return 'tag-using'      // 在用-绿色
+      if (type === 2) return 'tag-maintenance' // 维修-红色
+      if (type === 3) return 'tag-exit'       // 退场-黄色
+      return 'tag-entry'
     },
     
     // 格式化时间
@@ -350,6 +422,27 @@ export default {
         title: '打开筛选弹窗',
         icon: 'none'
       })
+    },
+    
+    // 显示打卡记录详情
+    showRecordDetail(item) {
+      // 显示详情对话框
+      this.currentDetail = item
+      this.showDetailModal = true
+    },
+    
+    // 关闭详情对话框
+    closeDetailModal() {
+      this.showDetailModal = false
+      this.currentDetail = null
+    },
+    
+    // 获取GPS坐标字符串
+    getGpsCoordinate(lng, lat) {
+      if (lng && lat) {
+        return `${lng}, ${lat}`
+      }
+      return '-'
     }
   }
 }
@@ -412,18 +505,23 @@ page {
   white-space: nowrap;
 }
 
-.status-normal {
-  background-color: #39CCA6;
+.status-entry {
+  background-color: #3AA7F9; /* 进场-蓝色 */
   color: #fff;
 }
 
-.status-warning {
-  background-color: #FFB138;
+.status-using {
+  background-color: #39CCA6; /* 在用-绿色 */
   color: #fff;
 }
 
-.status-abnormal {
-  background-color: #E55762;
+.status-maintenance {
+  background-color: #E55762; /* 维修-红色 */
+  color: #fff;
+}
+
+.status-exit {
+  background-color: #FFB138; /* 退场-黄色 */
   color: #fff;
 }
 
@@ -548,13 +646,23 @@ page {
   white-space: nowrap;
 }
 
-.tag-in {
-  background-color: #409EFF; 
+.tag-entry {
+  background-color: #3AA7F9; /* 进场-蓝色 */
   color: #fff;
 }
 
-.tag-out {
-  background-color: #909399;
+.tag-using {
+  background-color: #39CCA6; /* 在用-绿色 */
+  color: #fff;
+}
+
+.tag-maintenance {
+  background-color: #E55762; /* 维修-红色 */
+  color: #fff;
+}
+
+.tag-exit {
+  background-color: #FFB138; /* 退场-黄色 */
   color: #fff;
 }
 
@@ -568,6 +676,7 @@ page {
   font-size: 24rpx;
   color: #999;
   margin-right: 6rpx;
+  font-family: 'iconfont';
 }
 
 .loc-text {
@@ -609,5 +718,108 @@ page {
 .loading-text {
   color: #ccc;
   font-size: 24rpx;
+}
+
+/* 详情对话框样式 */
+.modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  width: 640rpx;
+  background-color: #FFFFFF;
+  border-radius: 16rpx;
+  overflow: hidden;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 32rpx 32rpx 24rpx;
+  border-bottom: 1rpx solid #F0F0F0;
+}
+
+.modal-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333333;
+}
+
+.modal-close {
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.close-icon {
+  font-size: 48rpx;
+  color: #999999;
+  line-height: 1;
+}
+
+.modal-body {
+  padding: 32rpx;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.detail-item {
+  margin-bottom: 32rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-item:last-child {
+  margin-bottom: 0;
+}
+
+.detail-label {
+  font-size: 26rpx;
+  color: #999999;
+  margin-bottom: 12rpx;
+}
+
+.detail-value {
+  font-size: 28rpx;
+  color: #333333;
+  word-break: break-all;
+}
+
+.modal-footer {
+  padding: 24rpx 32rpx 32rpx;
+  border-top: 1rpx solid #F0F0F0;
+}
+
+.modal-close-btn {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  background-color: #F5F5F5;
+  color: #333333;
+  font-size: 32rpx;
+  border-radius: 44rpx;
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.modal-close-btn:active {
+  opacity: 0.8;
 }
 </style>
