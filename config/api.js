@@ -17,6 +17,7 @@ export const API_ENDPOINTS = {
   APP_UPDATE_API: `${API_BASE_URL}/app/last`,
   DICT_LIST_API: `${API_BASE_URL}/dict/list`,
   REPORT_SAVE_API: `${API_BASE_URL}/report/save`,
+  PROJECT_BIND_API: `${API_BASE_URL}/project/bind`,
 };
 
 export default API_ENDPOINTS;

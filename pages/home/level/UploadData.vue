@@ -261,8 +261,18 @@ import { saveCacheRecord } from '@/utils/offlineCache.js'
 		 				} catch (e) {
 		 					uni.hideLoading();
 		 					console.error("处理二维码失败", e);
-		 					// request.js 已经显示了 msg，这里只需要清空设备信息
+		 					// request.js 已经显示了接口返回的 msg（如果 code !== 0）
+		 					// 如果是接口返回的错误（有 code 和 msg），不需要额外处理
 		 					// 容错：清空设备信息
+		 					if (e && typeof e === 'object' && e.code !== undefined && e.code !== 0) {
+		 						// 接口返回的错误，request.js 已经显示了 msg，直接返回
+		 						this.shebei = '';
+		 						this.shengchan = '';
+		 						this.deviceId = 0;
+		 						this.qrCodeUrl = '';
+		 						return;
+		 					}
+		 					// 其他错误（如网络错误），也清空设备信息
 		 					this.shebei = '';
 		 					this.shengchan = '';
 		 					this.deviceId = 0;
@@ -585,9 +595,16 @@ import { saveCacheRecord } from '@/utils/offlineCache.js'
 			 } catch (error) {
 				 console.error('提交打卡失败:', error);
 				 uni.hideLoading();
-				 // request.js 已经显示了接口返回的 msg，这里只需要处理离线缓存逻辑
 				 
-				 // 如果网络请求失败，尝试保存到离线缓存
+				 // 判断是否是接口返回的错误（有 code 和 msg）
+				 // 如果 code !== 0，说明是业务错误（如权限不足），不应该缓存
+				 if (error && typeof error === 'object' && error.code !== undefined && error.code !== 0) {
+					 // 接口返回的错误，request.js 已经显示了 msg，这里直接返回
+					 // 不需要额外处理，也不需要缓存
+					 return;
+				 }
+				 
+				 // 如果是网络错误或其他错误，尝试保存到离线缓存
 				 try {
 					 const cacheData = {
 						 type: 'attendance',

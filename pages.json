@@ -177,9 +177,13 @@
 		],
 		 "midButton":{
 				"iconPath":"static/icon_home_scan.png",
+			 	"width":"40px",
 				"height":"60px",
-				"iconWidth":"40px",
-				"text":""
+				"iconWidth":"55px",
+				"iconHeight":"55px",
+				"text":"",
+				"textAlign":"center"
+				
 			}
 		
 	},

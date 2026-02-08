@@ -183,7 +183,7 @@ export default {
 		  current: nextPage,
 		  size: this.deviceSize,
 		  keyword: this.keyword,
-		  pid: pid
+		  // pid: pid
 		};
 		// 全部时不传 status，其他状态传 0/1/2/3
 		if (status !== undefined) {
@@ -217,6 +217,14 @@ export default {
 		
 	  } catch (e) {
 		console.error('获取设备列表失败:', e);
+		// request.js 已经显示了接口返回的 msg（如果 code !== 0）
+		// 如果是接口返回的错误，不需要额外处理
+		if (e && typeof e === 'object' && e.code !== undefined && e.code !== 0) {
+		  // 接口返回的错误，request.js 已经显示了 msg
+		  this.loading = false
+		  return
+		}
+		// 其他错误（如网络错误）才显示通用错误提示
 		if (!reset) {
 		  uni.showToast({
 			title: '加载失败',

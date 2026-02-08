@@ -254,7 +254,7 @@ export default {
           current: 1,
           size: 20,
           keyword: this.deviceKeyword.trim(),
-          pid: pid
+          // pid: pid
         });
         const records = (res && res.records) || [];
         this.deviceList = records;
@@ -262,6 +262,15 @@ export default {
         this.updateDropdownPosition();
       } catch (e) {
         console.error('搜索设备失败:', e);
+        // request.js 已经显示了接口返回的 msg（如果 code !== 0）
+        // 如果是接口返回的错误，不需要额外处理
+        if (e && typeof e === 'object' && e.code !== undefined && e.code !== 0) {
+          // 接口返回的错误，request.js 已经显示了 msg
+          this.deviceList = [];
+          this.deviceLoading = false;
+          return
+        }
+        // 其他错误（如网络错误）才清空列表
         this.deviceList = [];
       } finally {
         this.deviceLoading = false;
@@ -730,7 +739,16 @@ export default {
         console.error('提交失败:', error);
         uni.hideLoading();
         
-        // 如果网络请求失败，尝试保存到离线缓存
+        // 判断是否是接口返回的错误（有 code 和 msg）
+        // 如果 code !== 0，说明是业务错误（如权限不足），不应该缓存
+        if (error && typeof error === 'object' && error.code !== undefined && error.code !== 0) {
+          // 接口返回的错误，request.js 已经显示了 msg，这里直接返回
+          // 不需要额外处理，也不需要缓存
+          this.submitting = false;
+          return;
+        }
+        
+        // 如果是网络错误或其他错误，尝试保存到离线缓存
         try {
           const createTime = this.enterTime.split(':').length === 2 ? this.enterTime + ':00' : this.enterTime;
           const type = parseInt(this.selectedTypeValue) || 0;

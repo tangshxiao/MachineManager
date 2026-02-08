@@ -10,7 +10,7 @@
 			
 			<!-- 网络提示 -->
 			<view class="network-notice" v-if="showNetworkNotice && hasPendingRecords">
-				<text>已检测到网络，可上传缓存数据</text>
+				<text>已检测到网络，当前离线数据{{ pendingCount }}条，可上传缓存数据</text>
 				<view class="notice-upload-btn" @click="uploadAll">立即上传</view>
 			</view>
 			
@@ -192,6 +192,13 @@
         console.log('最近打卡记录 attendanceList:', this.attendanceList)
       } catch (e) {
         console.error('获取最近打卡记录失败:', e)
+        // request.js 已经显示了接口返回的 msg（如果 code !== 0）
+        // 如果是接口返回的错误，不需要额外处理
+        if (e && typeof e === 'object' && e.code !== undefined && e.code !== 0) {
+          // 接口返回的错误，request.js 已经显示了 msg
+          return
+        }
+        // 其他错误（如网络错误）才显示通用错误提示
         uni.showToast({
           title: '获取打卡记录失败',
           icon: 'none'
@@ -222,6 +229,13 @@
         console.log('常用设备 deviceList:', this.deviceList)
       } catch (e) {
         console.error('获取常用设备失败:', e)
+        // request.js 已经显示了接口返回的 msg（如果 code !== 0）
+        // 如果是接口返回的错误，不需要额外处理
+        if (e && typeof e === 'object' && e.code !== undefined && e.code !== 0) {
+          // 接口返回的错误，request.js 已经显示了 msg
+          return
+        }
+        // 其他错误（如网络错误）才显示通用错误提示
         uni.showToast({
           title: '获取常用设备失败',
           icon: 'none'
@@ -329,17 +343,17 @@
     				} catch (e) {
     					uni.hideLoading();
     					console.error('处理二维码失败:', e);
-    					if (e.msg) {
-    						uni.showToast({
-    							title: e.msg,
-    							icon: 'none'
-    						});
-    					} else {
-    						uni.showToast({
-    							title: '二维码格式错误',
-    							icon: 'none'
-    						});
+    					// request.js 已经显示了接口返回的 msg（如果 code !== 0）
+    					// 如果是接口返回的错误，不需要额外处理
+    					if (e && typeof e === 'object' && e.code !== undefined && e.code !== 0) {
+    						// 接口返回的错误，request.js 已经显示了 msg
+    						return
     					}
+    					// 其他错误（如网络错误）才显示通用错误提示
+    					uni.showToast({
+    						title: '二维码格式错误',
+    						icon: 'none'
+    					});
     				}
     			},
     			fail: (err) => {

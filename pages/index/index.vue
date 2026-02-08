@@ -30,6 +30,8 @@
 
 <script>
 import api from '../../services/api.js'
+import http from '@/utils/request.js'
+import API_ENDPOINTS from '@/config/api.js'
 
 export default {
   onLoad() {
@@ -104,14 +106,47 @@ export default {
       }
     },
 
-    goNext() {
+    async goNext() {
       if (!this.selected.length) return
-      const ids = this.selected.join(',')
-
-      uni.setStorageSync('selectedProjectIds', ids)
-      uni.switchTab({
-        url: '/pages/home/level/home/home'
-      })
+      
+      try {
+        uni.showLoading({
+          title: '绑定中...',
+          mask: true
+        })
+        
+        // 调用绑定项目接口，传入数组格式
+        await http.post(API_ENDPOINTS.PROJECT_BIND_API, this.selected, {
+          header: {
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        uni.hideLoading()
+        
+        // 绑定成功后，保存到本地存储（保持原有逻辑）
+        const ids = this.selected.join(',')
+        uni.setStorageSync('selectedProjectIds', ids)
+        
+        // 跳转到首页
+        uni.switchTab({
+          url: '/pages/home/level/home/home'
+        })
+      } catch (error) {
+        uni.hideLoading()
+        console.error('绑定项目失败:', error)
+        // request.js 已经显示了接口返回的 msg（如果 code !== 0）
+        // 如果是接口返回的错误，不需要额外处理
+        if (error && typeof error === 'object' && error.code !== undefined && error.code !== 0) {
+          // 接口返回的错误，request.js 已经显示了 msg
+          return
+        }
+        // 其他错误（如网络错误）才显示通用错误提示
+        uni.showToast({
+          title: '绑定失败，请重试',
+          icon: 'none'
+        })
+      }
     },
 
 
