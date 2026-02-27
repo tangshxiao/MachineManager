@@ -249,7 +249,7 @@ import { saveCacheRecord } from '@/utils/offlineCache.js'
 		 						
 		 						uni.showToast({
 		 							title: '设备信息加载成功',
-		 							icon: 'success'
+		 							icon: 'none'
 		 						});
 		 					} else {
 		 						uni.showToast({
@@ -584,7 +584,7 @@ import { saveCacheRecord } from '@/utils/offlineCache.js'
 				 uni.hideLoading();
 				 uni.showToast({
 					 title: "打卡成功",
-					 icon: "success"
+					 icon: "none"
 				 });
 				 
 				 // 提交成功后，延迟返回上一页
