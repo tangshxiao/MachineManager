@@ -10,7 +10,7 @@
 				</view>
 			</view>
 			<view >
-				<image src="/static/icon_bg_update.png" mode="widthFix"alt=""class="Head-right" />
+				<image src="/static/icon_bg_update.png" mode="widthFix" alt="" class="Head-right" />
 			</view>
 		</view>
 	
@@ -31,7 +31,7 @@
 					<view class="Content-picker-sele" style="display:flex;justify-content:space-between;align-items:center;width:100%;">
 						<view class="Content-text-left-a">{{message}}</view>
 						<image src="/static/icon_jt_xx.png" style="width:32rpx; height: 32rpx;flex-shrink:0;margin-right:16rpx;"></image>
-				</view>
+					</view>
 				</picker>
 			</view>
 			<view class="Content-text">
@@ -39,11 +39,6 @@
 					{{  enterTime }}
 				</view>
 			</view>
-			<!-- <view class="Content-text">
-				操作人:<view class="Content-text-left">
-					{{person}}
-				</view>
-			</view> -->
 			<view class="Content-text">
 				证明材料:
 			</view>
@@ -86,6 +81,7 @@
 				class="Content-btn-left" 
 				hover-class="btn-left-hover"
 				hover-stay-time="100"
+				@click="scanCode"
 			>
 				重新扫码
 			</button>
@@ -101,569 +97,347 @@
 	</view>
 </view>
 </template>
+
 <script>
 import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
 import { saveCacheRecord } from '@/utils/offlineCache.js'
 
-	export default {
-	  data() {
-	    return {
-			shebei:"DEVOOOO3",
-			shengchan:"生产线B设备",
+export default {
+	data() {
+		return {
+			shebei: "DEVOOOO3",
+			shengchan: "生产线B设备",
 			message: "在用",
 			checkInTypes: ["在用", "维修"],
-			enterTime:"",
-			person:"老周",
-			images:[],
-			// 打卡相关字段
+			enterTime: "",
+			person: "老周",
+			images: [],
 			deviceId: 0,
-			// 位置信息
 			address: "",
 			lng: "",
 			lat: "",
-			// 提交状态
 			submitting: false,
-			// 二维码图片URL
 			qrCodeUrl: ""
-	    }
-	  },
+		}
+	},
 	  
-	  onLoad() {
-		// 页面加载时获取当前时间
+	onLoad(options) {
 		this.getEnterTime();
-	  },
-	  onShow() {
+		if (options && options.result) {
+			const resultStr = decodeURIComponent(options.result);
+			this.handleScanData(resultStr);
+		}
+	},
+
+	onShow() {
 		// 每次显示页面时触发扫码
-		this.scanCode();
-	  },
-	 // methods: {
-		//   // 扫码功能
-		//   scanCode() {
-		// 	uni.scanCode({
-		// 	  scanType: ['barCode', 'qrCode'],
-		// 	  success: (res) => {
-		// 		console.log('条码类型：' + res.scanType);
-		// 		console.log('条码内容：' + res.result);
-		// 		// 这里可以根据扫码结果更新页面数据
-		// 		// 例如：this.shebei = res.result;
-		// 		uni.showToast({
-		// 		  title: '扫码成功',
-		// 		  icon: 'success'
-		// 		});
-		// 	  },
-		// 	  fail: (err) => {
-		// 		console.error('扫码失败:', err);
-		// 		// 扫码失败时不显示错误提示，避免影响用户体验
-		// 		// 如果用户主动取消扫码，不需要提示
-		// 		if (err.errMsg && !err.errMsg.includes('cancel')) {
-		// 		  uni.showToast({
-		// 			title: '扫码失败',
-		// 			icon: 'none'
-		// 		  });
-		// 		}
-		// 	  }
-		// 	});
-		//   },
-		  // 获取当前时间并格式化
-	     getEnterTime() {
-			   // 创建时间对象
-	       const now = new Date()
-			// 获取年月日时分秒，并补零
-	       const y = now.getFullYear()
-	       const m = String(now.getMonth() + 1).padStart(2, '0')
-	       const d = String(now.getDate()).padStart(2, '0')
-	       const h = String(now.getHours()).padStart(2, '0')
-	       const min = String(now.getMinutes()).padStart(2, '0')
-	       const s = String(now.getSeconds()).padStart(2, '0')
-	 
-	        // 拼接成想要的格式
-	       this.enterTime = `${y}-${m}-${d} ${h}:${min}:${s}`
-	     },
+		// this.scanCode(); // 如果不想每次切回来都强行扫码，可以注释掉这行
+	},
+	  
+	methods: {
+		// 获取当前时间并格式化
+		getEnterTime() {
+			const now = new Date()
+			const y = now.getFullYear()
+			const m = String(now.getMonth() + 1).padStart(2, '0')
+			const d = String(now.getDate()).padStart(2, '0')
+			const h = String(now.getHours()).padStart(2, '0')
+			const min = String(now.getMinutes()).padStart(2, '0')
+			const s = String(now.getSeconds()).padStart(2, '0')
+			this.enterTime = `${y}-${m}-${d} ${h}:${min}:${s}`
+		},
 
-	  
-	  onLoad(options) {
-	  			this.getEnterTime();
-	  
-	  			if (options && options.result) {
-	  							// 因为首页传过来时可能 encode 了，这里最好 decode 一下
-	  							const resultStr = decodeURIComponent(options.result);
-	  							this.handleScanData(resultStr);
-	  						}
-	  		},
-	  
-	 methods: {
-		 // 打卡类型选择变化
-		 onCheckInTypeChange(e) {
-			 const index = e.detail.value;
-			 this.message = this.checkInTypes[index];
-		 },
-		 async handleScanData(jsonStr) {
-		 				try {
-		 					// 将 JSON 字符串转换为对象
-		 					const qrData = JSON.parse(jsonStr);
-		 					
-		 					// 提取qrNo
-		 					if (!qrData.qrNo) {
-		 						uni.showToast({
-		 							title: '二维码格式错误',
-		 							icon: 'none'
-		 						});
-		 						return;
-		 					}
-		 					
-		 					// 调用二维码详情接口获取设备信息
-		 					uni.showLoading({
-		 						title: '加载中...',
-		 						mask: true
-		 					});
-		 					
-		 					const qrDetails = await http.post(API_ENDPOINTS.DEVICE_QR_DETAILS_API, {
-		 						qrNo: qrData.qrNo
-		 					});
-		 					
-		 					uni.hideLoading();
-		 					
-		 					console.log('二维码详情数据:', qrDetails);
-		 					
-		 					if (qrDetails) {
-		 						// 1. 反显设备编号 (deviceNo -> shebei)
-		 						if (qrDetails.deviceNo) {
-		 							this.shebei = qrDetails.deviceNo;
-		 						}
-		 
-		 						// 2. 反显设备名称 (deviceName -> shengchan)
-		 						if (qrDetails.deviceName) {
-		 							this.shengchan = qrDetails.deviceName;
-		 						}
-		 						
-		 						// 3. 保存设备ID，用于提交打卡
-		 						if (qrDetails.deviceId) {
-		 							this.deviceId = qrDetails.deviceId;
-		 						}
-		 						
-		 						// 4. 保存二维码图片URL
-		 						if (qrDetails.url) {
-		 							this.qrCodeUrl = qrDetails.url;
-		 						}
-		 						
-		 						uni.showToast({
-		 							title: '设备信息加载成功',
-		 							icon: 'none'
-		 						});
-		 					} else {
-		 						uni.showToast({
-		 							title: '获取设备信息失败',
-		 							icon: 'none'
-		 						});
-		 					}
-		 
-		 				} catch (e) {
-		 					uni.hideLoading();
-		 					console.error("处理二维码失败", e);
-		 					// request.js 已经显示了接口返回的 msg（如果 code !== 0）
-		 					// 如果是接口返回的错误（有 code 和 msg），不需要额外处理
-		 					// 容错：清空设备信息
-		 					if (e && typeof e === 'object' && e.code !== undefined && e.code !== 0) {
-		 						// 接口返回的错误，request.js 已经显示了 msg，直接返回
-		 						this.shebei = '';
-		 						this.shengchan = '';
-		 						this.deviceId = 0;
-		 						this.qrCodeUrl = '';
-		 						return;
-		 					}
-		 					// 其他错误（如网络错误），也清空设备信息
-		 					this.shebei = '';
-		 					this.shengchan = '';
-		 					this.deviceId = 0;
-		 					this.qrCodeUrl = '';
-		 				}
-		 			},
-		 
-		 // 预览二维码图片
-		 previewQrCode() {
-			 if (this.qrCodeUrl) {
-				 uni.previewImage({
-					 urls: [this.qrCodeUrl],
-					 current: this.qrCodeUrl
-				 });
-			 }
-		 },
-		 
-		  getEnterTime() {
-		 
-		 			   // 创建时间对象
-		 
-		 	       const now = new Date()
-		 
-		 			// 获取年月日时分秒，并补零
-		 
-		 	       const y = now.getFullYear()
-		 
-		 	       const m = String(now.getMonth() + 1).padStart(2, '0')
-		 
-		 	       const d = String(now.getDate()).padStart(2, '0')
-		 
-		 	       const h = String(now.getHours()).padStart(2, '0')
-		 
-		 	       const min = String(now.getMinutes()).padStart(2, '0')
-		 
-		 	       const s = String(now.getSeconds()).padStart(2, '0')
-		 
-		 	 
-		 
-		 	        // 拼接成想要的格式
-		 
-		 	       this.enterTime = `${y}-${m}-${d} ${h}:${min}:${s}`
-		 
-		 	     },
-	    
+		// 打卡类型选择变化
+		onCheckInTypeChange(e) {
+			const index = e.detail.value;
+			this.message = this.checkInTypes[index];
+		},
 
-		 upload(){
-		 	if (this.images.length >= 5) {
-		 	  uni.showToast({
-		 	    title: "最多上传5张图片",
-		 	    icon: "none",
-		 	  });
-		 	  return;
-		 	}
-		 	const remain = 5 - this.images.length;
-		 	uni.chooseImage({
-		 	  count: remain,
-		 	  sizeType: ["original", "compressed"],
-		 	  sourceType: ["camera", "album"],
-		 	  success: (res) => {
-		 	    const paths = res.tempFilePaths || [];
-		 	    const validExt = [".jpg", ".jpeg", ".png"];
-		 	    const newImages = [];
-		 	    paths.forEach((p) => {
-		 	      const lower = String(p).toLowerCase();
-		 	      const ok = validExt.some((ext) => lower.endsWith(ext));
-		 	      if (ok) {
-		 	        newImages.push(p);
-		 	      }
-		 	    });
-		 	    if (newImages.length < paths.length) {
-		 	      uni.showToast({
-		 	        title: "仅支持JPG/PNG格式",
-		 	        icon: "none",
-		 	      });
-		 	    }
-		 	    this.images = this.images.concat(newImages).slice(0, 5);
-		 	  },
-		 	});
-		 },
-		 removeImage(index){
-		 	this.images.splice(index,1)
-		 },
-		 previewImage(index){
-		 	uni.previewImage({
-		 	  urls: this.images,
-		 	  current: this.images[index],
-		 	});
-		 },
+		// 重新扫码
+		scanCode() {
+			uni.scanCode({
+				success: (res) => {
+					this.handleScanData(res.result);
+				},
+				fail: (err) => {
+					if (err.errMsg && !err.errMsg.includes('cancel')) {
+						uni.showToast({ title: '扫码失败', icon: 'none' });
+					}
+				}
+			});
+		},
+
+		// 处理扫码数据
+		async handleScanData(jsonStr) {
+			try {
+				const qrData = JSON.parse(jsonStr);
+				if (!qrData.qrNo) {
+					uni.showToast({ title: '二维码格式错误', icon: 'none' });
+					return;
+				}
+				
+				uni.showLoading({ title: '加载中...', mask: true });
+				const qrDetails = await http.post(API_ENDPOINTS.DEVICE_QR_DETAILS_API, { qrNo: qrData.qrNo });
+				uni.hideLoading();
+				
+				// 判定设备绑定状态
+				if (qrDetails && qrDetails.status !== undefined) {
+					if (qrDetails.status === 0) {
+						// 未绑定，弹窗跳转
+						uni.showModal({
+							title: '提示',
+							content: '该设备未绑定，是否前往绑定设备？',
+							confirmText: '确认',
+							cancelText: '取消',
+							success: (res) => {
+								if (res.confirm) {
+									uni.redirectTo({
+										url: '/pages/home/level/BindDevice?qrCode=' + encodeURIComponent(jsonStr)
+									});
+								}
+							}
+						});
+					} else if (qrDetails.status === 1) {
+						// 已绑定，更新数据
+						if (qrDetails.deviceNo) this.shebei = qrDetails.deviceNo;
+						if (qrDetails.deviceName) this.shengchan = qrDetails.deviceName;
+						if (qrDetails.deviceId) this.deviceId = qrDetails.deviceId;
+						if (qrDetails.url) this.qrCodeUrl = qrDetails.url;
+						
+						uni.showToast({
+							title: '设备信息加载成功',
+							icon: 'none' // 【修复1】：用 none 解决字数多被截断的问题
+						});
+					} else {
+						uni.showToast({ title: '二维码状态异常', icon: 'none' });
+					}
+				} else {
+					uni.showToast({ title: '获取设备信息失败', icon: 'none' });
+				}
+
+			} catch (e) {
+				uni.hideLoading();
+				console.error("处理二维码失败", e);
+				
+				// 【修复2】：精准区分解析错误与网络错误
+				if (e instanceof SyntaxError) {
+					uni.showToast({ title: '二维码格式错误', icon: 'none' });
+				} else if (e && typeof e === 'object' && e.code !== undefined && e.code !== 0) {
+					// 业务错误，request.js 已提示
+				} else {
+					// 真正的原因：断网
+					uni.showToast({ title: '网络连接失败，请检查网络', icon: 'none' });
+				}
+
+				this.shebei = '';
+				this.shengchan = '';
+				this.deviceId = 0;
+				this.qrCodeUrl = '';
+			}
+		},
+
+		previewQrCode() {
+			if (this.qrCodeUrl) {
+				uni.previewImage({
+					urls: [this.qrCodeUrl],
+					current: this.qrCodeUrl
+				});
+			}
+		},
+
+		upload(){
+			if (this.images.length >= 5) {
+				uni.showToast({ title: "最多上传5张图片", icon: "none" });
+				return;
+			}
+			const remain = 5 - this.images.length;
+			uni.chooseImage({
+				count: remain,
+				sizeType: ["original", "compressed"],
+				sourceType: ["camera", "album"],
+				success: (res) => {
+					const paths = res.tempFilePaths || [];
+					const validExt = [".jpg", ".jpeg", ".png"];
+					const newImages = [];
+					paths.forEach((p) => {
+						const lower = String(p).toLowerCase();
+						const ok = validExt.some((ext) => lower.endsWith(ext));
+						if (ok) {
+							newImages.push(p);
+						}
+					});
+					if (newImages.length < paths.length) {
+						uni.showToast({ title: "仅支持JPG/PNG格式", icon: "none" });
+					}
+					this.images = this.images.concat(newImages).slice(0, 5);
+				},
+			});
+		},
+
+		removeImage(index){
+			this.images.splice(index,1)
+		},
+
+		previewImage(index){
+			uni.previewImage({
+				urls: this.images,
+				current: this.images[index],
+			});
+		},
 		 
-		 // 获取位置信息
-		 async getLocation() {
-			 return new Promise((resolve, reject) => {
-				 uni.getLocation({
-					 type: 'gcj02',
-					 success: (res) => {
-						 this.lng = String(res.longitude);
-						 this.lat = String(res.latitude);
-						 
-						 // 逆地理编码获取地址
-						 uni.request({
-							 url: `https://apis.map.qq.com/ws/geocoder/v1/?location=${res.latitude},${res.longitude}&key=OB4BZ-D4W3U-B7VVO-4PJWW-6TKDJ-WPB77&get_poi=1`,
-							 success: (addrRes) => {
-								 if (addrRes.data && addrRes.data.result) {
-									 this.address = addrRes.data.result.address || '';
-								 }
-								 resolve({ lng: this.lng, lat: this.lat, address: this.address });
-							 },
-							 fail: () => {
-								 this.address = '';
-								 resolve({ lng: this.lng, lat: this.lat, address: '' });
-							 }
-						 });
-					 },
-					 fail: (err) => {
-						 console.error('获取位置失败:', err);
-						 this.lng = '';
-						 this.lat = '';
-						 this.address = '';
-						 resolve({ lng: '', lat: '', address: '' });
-					 }
-				 });
-			 });
-		 },
+		// 获取位置信息
+		async getLocation() {
+			return new Promise((resolve) => {
+				uni.getLocation({
+					type: 'gcj02',
+					success: (res) => {
+						this.lng = String(res.longitude);
+						this.lat = String(res.latitude);
+						
+						uni.request({
+							url: `https://apis.map.qq.com/ws/geocoder/v1/?location=${res.latitude},${res.longitude}&key=OB4BZ-D4W3U-B7VVO-4PJWW-6TKDJ-WPB77&get_poi=1`,
+							success: (addrRes) => {
+								if (addrRes.data && addrRes.data.result) {
+									this.address = addrRes.data.result.address || '';
+								} else {
+									this.address = `经度:${this.lng},纬度:${this.lat}`;
+								}
+								resolve({ lng: this.lng, lat: this.lat, address: this.address });
+							},
+							fail: () => {
+								// 【修复3】：断网时依然保留经纬度作为打卡地址
+								this.address = `经度:${this.lng},纬度:${this.lat}`;
+								resolve({ lng: this.lng, lat: this.lat, address: this.address });
+							}
+						});
+					},
+					fail: (err) => {
+						console.error('获取位置失败:', err);
+						this.lng = '';
+						this.lat = '';
+						this.address = '未获取到位置';
+						resolve({ lng: '', lat: '', address: this.address });
+					}
+				});
+			});
+		},
 		 
-		 // 上传图片
-		 async uploadImages() {
-			 if (!this.images || this.images.length === 0) {
-				 return '';
-			 }
-			 
-			 const uploadPromises = this.images.map(filePath => {
-				 return http.upload(filePath, {
-					 url: API_ENDPOINTS.UPLOAD_API,
-					 name: 'file',
-					 showLoading: false
-				 }).catch(err => {
-					 console.error('图片上传失败:', err);
-					 // request.js 已经显示了接口返回的 msg，这里只返回 null 表示失败
-					 return null;
-				 });
-			 });
-			 
-			 const results = await Promise.all(uploadPromises);
-			 // 过滤掉上传失败的，并用逗号连接
-			 const successUrls = results.filter(url => url !== null);
-			 return successUrls.join(',');
-		 },
+		// 上传图片（兼容离线和单张失败）
+		async uploadImages() {
+			if (!this.images || this.images.length === 0) return '';
+			
+			const uploadPromises = this.images.map(filePath => {
+				return http.upload(filePath, {
+					url: API_ENDPOINTS.UPLOAD_API,
+					name: 'file',
+					showLoading: false
+				}).catch(err => {
+					console.error('图片上传失败:', err);
+					return null; 
+				});
+			});
+			
+			const results = await Promise.all(uploadPromises);
+			const successUrls = results.filter(url => url !== null);
+			return successUrls.join(',');
+		},
 		 
-		 // 检测网络状态
-		 async checkNetworkStatus() {
-			 return new Promise((resolve) => {
-				 uni.getNetworkType({
-					 success: (res) => {
-						 // networkType: wifi/2g/3g/4g/5g/unknown/none
-						 resolve(res.networkType !== 'none' && res.networkType !== 'unknown')
-					 },
-					 fail: () => {
-						 resolve(false) // 获取失败时认为离线
-					 }
-				 })
-			 })
-		 },
-		 
-		 // 提交打卡
-		 async submitCheckIn() {
-			 // 表单验证
-			 if (!this.deviceId || this.deviceId === 0) {
-				 uni.showToast({
-					 title: '请先扫码获取设备信息',
-					 icon: 'none'
-				 });
-				 return;
-			 }
-			 
-			 if (!this.shebei || !this.shebei.trim()) {
-				 uni.showToast({
-					 title: '设备编号不能为空',
-					 icon: 'none'
-				 });
-				 return;
-			 }
-			 
-			 if (!this.message || (this.message !== '在用' && this.message !== '维修')) {
-				 uni.showToast({
-					 title: '请选择打卡类型',
-					 icon: 'none'
-				 });
-				 return;
-			 }
-			 
-			 if (!this.enterTime) {
-				 uni.showToast({
-					 title: '时间信息错误',
-					 icon: 'none'
-				 });
-				 return;
-			 }
-			 
-			 // 防止重复提交
-			 if (this.submitting) {
-				 return;
-			 }
-			 
-			 this.submitting = true;
-			 
-			 try {
-				 uni.showLoading({
-					 title: '提交中...',
-					 mask: true
-				 });
-				 
-				 // 1. 获取位置信息
-				 await this.getLocation();
-				 
-				 // 2. 上传图片（离线时也上传，如果失败则在离线数据中保存图片路径）
-				 let imgs = '';
-				 try {
-					 imgs = await this.uploadImages();
-				 } catch (imgError) {
-					 console.warn('图片上传失败，将在离线数据中保存图片路径', imgError);
-				 }
-				 
-				 // 3. 确定类型：1在用 2维修
-				 const type = this.message === "在用" ? 1 : 2;
-				 
-				 // 4. 格式化时间，确保格式为 YYYY-MM-DD HH:mm:ss
-				 let timeStr = this.enterTime;
-				 if (!timeStr.includes(':')) {
-					 timeStr = timeStr + ' 00:00:00';
-				 } else if (timeStr.split(':').length === 2) {
-					 timeStr = timeStr + ':00';
-				 }
-				 
-				 // 5. 构建提交数据
-				 const submitData = {
-					 deviceId: this.deviceId,
-					 deviceNo: this.shebei || "", // 设备编号
-					 type: type, // 1在用 2维修
-					 address: this.address || "",
-					 lng: this.lng || "",
-					 lat: this.lat || "",
-					 imgs: imgs || "",
-					 remark: "",
-					 time: timeStr,
-					 status: 0 // 0正常 1异常
-				 };
-				 
-				 // 6. 检测网络状态
-				 const isOnline = await this.checkNetworkStatus();
-				 
-				 if (!isOnline) {
-					 // 离线状态，保存到本地缓存
-					 uni.hideLoading();
-					 
-					 const cacheData = {
-						 type: 'attendance', // 打卡类型
-						 deviceId: this.deviceId,
-						 deviceNo: this.shebei,
-						 deviceName: this.shengchan,
-						 tag: this.message, // 在用 或 维修
-						 time: timeStr,
-						 address: this.address || "",
-						 lng: this.lng || "",
-						 lat: this.lat || "",
-						 imgs: imgs || "",
-						 images: this.images || [], // 保存本地图片路径
-						 remark: "",
-						 status: 0,
-						 data: JSON.stringify(submitData) // 保存完整提交数据
-					 };
-					 
-					 const result = saveCacheRecord(cacheData);
-					 
-					 if (result.success) {
-						 // 显示黄色提示
-						 uni.showToast({
-							 title: '当前无网络，数据已本地缓存',
-							 icon: 'none',
-							 duration: 3000,
-							 mask: true
-						 });
-						 
-						 // 延迟返回上一页
-						 setTimeout(() => {
-							 uni.navigateBack();
-						 }, 1500);
-					 } else {
-						 // 存储失败（可能是空间不足）
-						 uni.showModal({
-							 title: '提示',
-							 content: result.error || '缓存失败，请重试',
-							 showCancel: false,
-							 confirmText: '确定',
-							 confirmColor: '#E02020'
-						 });
-					 }
-					 return;
-				 }
-				 
-				 // 在线状态，正常提交
-				 // 如果 code !== 0，request.js 会显示 msg 并 reject，这里会被 catch 捕获
-				 const result = await http.post(API_ENDPOINTS.ATTENDANCE_ADD_API, submitData, {
-					 header: {
-						 'Content-Type': 'application/json'
-					 }
-				 });
-				 
-				 uni.hideLoading();
-				 uni.showToast({
-					 title: "打卡成功",
-					 icon: "none"
-				 });
-				 
-				 // 提交成功后，延迟返回上一页
-				 setTimeout(() => {
-					 uni.navigateBack();
-				 }, 1500);
-				 
-			 } catch (error) {
-				 console.error('提交打卡失败:', error);
-				 uni.hideLoading();
-				 
-				 // 判断是否是接口返回的错误（有 code 和 msg）
-				 // 如果 code !== 0，说明是业务错误（如权限不足），不应该缓存
-				 if (error && typeof error === 'object' && error.code !== undefined && error.code !== 0) {
-					 // 接口返回的错误，request.js 已经显示了 msg，这里直接返回
-					 // 不需要额外处理，也不需要缓存
-					 return;
-				 }
-				 
-				 // 如果是网络错误或其他错误，尝试保存到离线缓存
-				 try {
-					 const cacheData = {
-						 type: 'attendance',
-						 deviceId: this.deviceId,
-						 deviceNo: this.shebei,
-						 deviceName: this.shengchan,
-						 tag: this.message, // 在用 或 维修
-						 time: this.enterTime,
-						 address: this.address || "",
-						 lng: this.lng || "",
-						 lat: this.lat || "",
-						 imgs: "",
-						 images: this.images || [],
-						 remark: "",
-						 status: 0,
-						 data: JSON.stringify({
-							 deviceId: this.deviceId,
-							 deviceNo: this.shebei || "",
-							 type: this.message === "在用" ? 1 : 2, // 1在用 2维修
-							 address: this.address || "",
-							 lng: this.lng || "",
-							 lat: this.lat || "",
-							 imgs: "",
-							 remark: "",
-							 time: this.enterTime,
-							 status: 0
-						 })
-					 };
-					 
-					 const cacheResult = saveCacheRecord(cacheData);
-					 if (cacheResult.success) {
-						 uni.showToast({
-							 title: '提交失败，数据已缓存',
-							 icon: 'none',
-							 duration: 3000
-						 });
-						 setTimeout(() => {
-							 uni.navigateBack();
-						 }, 1500);
-					 } else {
-						 uni.showToast({
-							 title: "提交失败，请重试",
-							 icon: "none"
-						 });
-					 }
-				 } catch (cacheError) {
-					 uni.showToast({
-						 title: "提交失败，请重试",
-						 icon: "none"
-					 });
-				 }
-			 } finally {
-				 this.submitting = false;
-			 }
-		 }
-	   },
-	   
-	 }
+		// 【终极修复4】：乐观上传 + 精准缓存 + 安全传参 pid
+		async submitCheckIn() {
+			if (!this.deviceId || this.deviceId === 0) { uni.showToast({ title: '请先扫码获取设备信息', icon: 'none' }); return; }
+			if (!this.shebei || !this.shebei.trim()) { uni.showToast({ title: '设备编号不能为空', icon: 'none' }); return; }
+			if (!this.message || (this.message !== '在用' && this.message !== '维修')) { uni.showToast({ title: '请选择打卡类型', icon: 'none' }); return; }
+			if (!this.enterTime) { uni.showToast({ title: '时间信息错误', icon: 'none' }); return; }
+			if (this.submitting) return;
+			
+			this.submitting = true;
+			
+			try {
+				uni.showLoading({ title: '提交中...', mask: true });
+				
+				await this.getLocation();
+				
+				const selectedProjectIds = uni.getStorageSync('selectedProjectIds');
+				const pidStr = selectedProjectIds ? selectedProjectIds.split(',')[0] : '';
+				const pid = pidStr ? Number(pidStr) : null; 
+				
+				let timeStr = this.enterTime;
+				if (!timeStr.includes(':')) timeStr = timeStr + ' 00:00:00';
+				else if (timeStr.split(':').length === 2) timeStr = timeStr + ':00';
+				
+				const type = this.message === "在用" ? 1 : 2;
+				
+				let imgs = await this.uploadImages();
+				
+				const submitData = {
+					deviceId: this.deviceId,
+					deviceNo: this.shebei || "",
+					type: type,
+					address: this.address || "",
+					lng: this.lng || "",
+					lat: this.lat || "",
+					imgs: imgs || "",
+					remark: "",
+					time: timeStr,
+					status: 0,
+					pid: pid,         
+					projectId: pid    
+				};
+				
+				try {
+					await http.post(API_ENDPOINTS.ATTENDANCE_ADD_API, submitData, {
+						header: { 'Content-Type': 'application/json' }
+					});
+					
+					uni.hideLoading();
+					uni.showToast({ title: "打卡成功", icon: "success" });
+					setTimeout(() => { uni.navigateBack(); }, 1500);
+					
+				} catch (error) {
+					if (error && typeof error === 'object' && error.code !== undefined && error.code !== 0) {
+						uni.hideLoading();
+						this.submitting = false;
+						return;
+					}
+					
+					console.warn('网络不稳定，转入离线流程', error);
+					
+					const cacheData = {
+						type: 'attendance',
+						deviceId: this.deviceId,
+						deviceNo: this.shebei,
+						deviceName: this.shengchan,
+						tag: this.message,
+						time: timeStr,
+						address: this.address || "",
+						lng: this.lng || "",
+						lat: this.lat || "",
+						imgs: imgs, 
+						images: this.images || [], 
+						remark: "",
+						status: 0,
+						data: JSON.stringify(submitData) 
+					};
+					
+					const result = saveCacheRecord(cacheData);
+					uni.hideLoading();
+					
+					if (result.success) {
+						uni.showToast({ title: '网络不稳定，已自动保存到本地离线', icon: 'none', duration: 3000, mask: true });
+						setTimeout(() => { uni.navigateBack(); }, 1500);
+					} else {
+						uni.showModal({ title: '提示', content: result.error || '缓存失败，请重试', showCancel: false, confirmText: '确定', confirmColor: '#E02020' });
+					}
+				}
+			} finally {
+				this.submitting = false;
+			}
+		}
+	}
+}
 </script>
+
 <style>
 	.root{
 		padding-left: 36rpx;
@@ -903,5 +677,4 @@ import { saveCacheRecord } from '@/utils/offlineCache.js'
 		font-size: 26rpx;
 		color: #999;
 	}
-	
 </style>
