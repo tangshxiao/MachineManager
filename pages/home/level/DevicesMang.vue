@@ -448,6 +448,9 @@ page {
 	flex: 1;
 	display: flex;
 	flex-direction: column;
+	min-width: 0;
+	overflow: hidden;
+	margin-right: 20rpx;
 }
 
 .device-item-text{
@@ -456,6 +459,9 @@ page {
 	margin-bottom: 16rpx;
 	gap: 20rpx;
 	flex-wrap: nowrap;
+	width: 100%;
+	min-width: 0;
+	overflow: hidden;
 }
 
 .device-no {
@@ -463,12 +469,19 @@ page {
 	color: #333;
 	font-weight: 500;
 	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	flex-shrink: 0;
 }
 
 .device-name {
 	font-size: 28rpx;
 	color: #333;
+	flex: 1;
+	min-width: 0;
 	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .empty {
@@ -482,6 +495,8 @@ page {
 	justify-content: space-between;
 	align-items: flex-start;
 	padding: 0 34rpx;
+	box-sizing: border-box;
+	overflow: hidden;
 }
 
 .device-item-right {

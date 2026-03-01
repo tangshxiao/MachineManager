@@ -14,7 +14,6 @@
 						v-model="deviceKeyword" 
 						type="text" 
 						placeholder="输入设备编号或名称搜索"
-						@input="onDeviceSearch"
 						@focus="handleDeviceInputFocus"
 						@blur="handleDeviceInputBlur"
 						:id="'device-input'"
@@ -175,11 +174,36 @@ export default {
     // 加载异常上报类型列表
     this.loadExceptionTypes();
   },
+  
+  // 监听设备关键词变化
+  watch: {
+    deviceKeyword(newValue, oldValue) {
+      if (newValue === oldValue) return;
+      
+      if (this.errorShebie !== "") {
+        this.errorShebie = "";
+      }
+      // 触发防抖搜索
+      this.handleDeviceSearch();
+    }
+  },
+  
   methods: {
 	// 处理设备输入框聚焦
 	handleDeviceInputFocus() {
-	  this.showDeviceList = true;
-	  this.updateDropdownPosition();
+	  // 延迟 150ms 展开列表，防止视图突然更新打断安卓端刚刚弹起的输入法
+	  setTimeout(() => {
+		this.showDeviceList = true;
+		this.updateDropdownPosition();
+	  }, 150);
+	},
+	
+	// 处理设备输入框失焦
+	handleDeviceInputBlur() {
+	  // 延迟关闭，让点击事件先执行
+	  setTimeout(() => {
+		this.showDeviceList = false;
+	  }, 200);
 	},
 	
 	// 更新下拉列表位置
@@ -195,28 +219,6 @@ export default {
 	  });
 	},
 	
-	// 设备搜索
-	onDeviceSearch(e) {
-	  // 只允许输入数字和英文字母
-	  const value = e.detail.value;
-	  const filteredValue = value.replace(/[^a-zA-Z0-9]/g, '');
-	  
-	  // 如果输入被过滤，更新输入框的值
-	  if (value !== filteredValue) {
-		this.deviceKeyword = filteredValue;
-		// 使用 nextTick 确保值更新后再触发搜索
-		this.$nextTick(() => {
-		  this.handleDeviceSearch();
-		});
-	  } else {
-		this.deviceKeyword = value;
-		this.handleDeviceSearch();
-	  }
-	  
-	  // 清除错误提示
-	  this.errorShebie = "";
-	},
-	
 	// 处理设备搜索（防抖）
 	handleDeviceSearch() {
 	  // 防抖处理
@@ -224,6 +226,7 @@ export default {
 		clearTimeout(this.deviceSearchTimer);
 	  }
 	  
+	  // 将防抖时间提升到 800ms，给用户敲击中文拼音留出足够的时间，防止边打字边搜索导致卡顿
 	  this.deviceSearchTimer = setTimeout(() => {
 		if (this.deviceKeyword.trim()) {
 		  this.searchDevices();
@@ -231,7 +234,7 @@ export default {
 		  this.deviceList = [];
 		  this.showDeviceList = false;
 		}
-	  }, 300);
+	  }, 800);
 	},
 	
 	// 搜索设备列表
@@ -252,11 +255,14 @@ export default {
 	  
 	  this.deviceLoading = true;
 	  try {
+		// 在请求接口前，过滤掉奇怪的符号，保留中英文和数字传给后端，这样既安全又不影响前端输入体验
+		const safeKeyword = this.deviceKeyword.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '').trim();
+		
 		const res = await http.post(API_ENDPOINTS.DEVICE_LIST_API, {
 		  sort: 0,
 		  current: 1,
 		  size: 20,
-		  keyword: this.deviceKeyword.trim(),
+		  keyword: safeKeyword, // 传递安全的关键词
 		  // pid: pid
 		});
 		const records = (res && res.records) || [];

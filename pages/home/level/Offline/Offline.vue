@@ -66,13 +66,13 @@
 
           <view class="card-actions">
             <template v-if="item.status === 'corrupted'">
-              <view class="btn delete-btn" @click="handleCorruptedClick(index)">删除</view>
-              <view class="btn primary-btn" @click="handleCorruptedClick(index)">查看详情</view>
+              <view class="btn delete-btn" @click.stop="handleCorruptedDelete(index)">删除</view>
+              <view class="btn primary-btn" @click.stop="goToDetail(item)">查看详情</view>
             </template>
             
             <template v-else>
-              <view class="btn outline-btn" @click="reUploadOne(item)">重新上传</view>
-              <view class="btn primary-btn" @click="goToDetail(item)">查看详情</view>
+              <view class="btn outline-btn" @click.stop="reUploadOne(item)">重新上传</view>
+              <view class="btn primary-btn" @click.stop="goToDetail(item)">查看详情</view>
             </template>
           </view>
         </view>
@@ -90,6 +90,67 @@
       <view class="action-btn" @click="uploadSelectedItems">选中数据重新上传</view>
     </view>
 
+    <!-- 详情对话框 -->
+    <view class="modal-mask" v-if="showDetailModal" @tap="closeDetailModal">
+      <view class="modal-content" @tap.stop>
+        <view class="modal-header">
+          <text class="modal-title">缓存记录详情</text>
+          <view class="modal-close" @tap="closeDetailModal">
+            <text class="close-icon">×</text>
+          </view>
+        </view>
+        
+        <view class="modal-body" v-if="currentDetail">
+          <view class="detail-item">
+            <text class="detail-label">设备编号</text>
+            <text class="detail-value">{{ currentDetail.deviceNo || '-' }}</text>
+          </view>
+          
+          <view class="detail-item">
+            <text class="detail-label">设备名称</text>
+            <text class="detail-value">{{ currentDetail.deviceName || '-' }}</text>
+          </view>
+          
+          <view class="detail-item">
+            <text class="detail-label">打卡类型</text>
+            <text class="detail-value">{{ currentDetail.tag || '-' }}</text>
+          </view>
+          
+          <view class="detail-item">
+            <text class="detail-label">打卡时间</text>
+            <text class="detail-value">{{ currentDetail.time || '-' }}</text>
+          </view>
+          
+          <view class="detail-item">
+            <text class="detail-label">位置</text>
+            <text class="detail-value">{{ currentDetail.address || '-' }}</text>
+          </view>
+          
+          <view class="detail-item">
+            <text class="detail-label">GPS坐标</text>
+            <text class="detail-value">{{ getGpsCoordinate(currentDetail.lng, currentDetail.lat) }}</text>
+          </view>
+          
+          <view class="detail-item" v-if="currentDetail.images && currentDetail.images.length > 0">
+            <text class="detail-label">图片</text>
+            <view class="detail-images">
+              <image 
+                v-for="(img, imgIndex) in currentDetail.images" 
+                :key="imgIndex"
+                class="detail-img" 
+                :src="img" 
+                mode="aspectFill"
+                @tap="previewDetailImages(imgIndex)"
+              ></image>
+            </view>
+          </view>
+        </view>
+        
+        <view class="modal-footer">
+          <button class="modal-close-btn" @tap="closeDetailModal">关闭</button>
+        </view>
+      </view>
+    </view>
 	 
   </view>
 </template>
@@ -120,7 +181,9 @@ export default {
       showNetworkNotice: false,
       uploadResult: null,
       uploading: false,
-      isOnline: true // 网络状态
+      isOnline: true, // 网络状态
+      showDetailModal: false, // 是否显示详情对话框
+      currentDetail: null // 当前详情数据
     };
   },
   
@@ -204,16 +267,79 @@ export default {
       return 'tag-blue'; // 默认退场
     },
     
-    // 跳转详情页
+    // 查看详情
     goToDetail(item) {
-      uni.navigateTo({
-        url: `/pages/cacheDetail/cacheDetail?id=${item.id}`,
-        success: () => console.log('跳转至缓存详情页')
+      // 从原始数据中提取详情信息
+      const rawData = item.rawData || {};
+      
+      // 先尝试从 data JSON 字符串中解析（这是最完整的数据）
+      let parsedData = {};
+      if (rawData.data) {
+        try {
+          parsedData = JSON.parse(rawData.data);
+          console.log('解析的缓存数据:', parsedData);
+        } catch (e) {
+          console.warn('解析缓存数据失败:', e);
+        }
+      }
+      
+      // 构建详情数据，优先使用 parsedData，其次使用 rawData，最后使用 item
+      let detailData = {
+        deviceNo: parsedData.deviceNo || rawData.deviceNo || item.deviceName || '-',
+        deviceName: parsedData.deviceName || rawData.deviceName || item.deviceName || '-',
+        tag: rawData.tag || item.tag || '-',
+        time: parsedData.time || rawData.time || item.time || '-',
+        // 位置信息：优先从 parsedData 读取，其次从 rawData 读取，最后从 item.location 读取
+        address: parsedData.address || rawData.address || item.location || '-',
+        // GPS坐标：优先从 parsedData 读取，其次从 rawData 读取
+        lng: parsedData.lng || rawData.lng || '',
+        lat: parsedData.lat || rawData.lat || '',
+        images: rawData.images || (item.imgUrl ? [item.imgUrl] : [])
+      };
+      
+      // 调试信息：打印实际读取到的位置和坐标
+      console.log('详情数据:', {
+        address: detailData.address,
+        lng: detailData.lng,
+        lat: detailData.lat,
+        rawDataAddress: rawData.address,
+        rawDataLng: rawData.lng,
+        rawDataLat: rawData.lat,
+        parsedDataAddress: parsedData.address,
+        parsedDataLng: parsedData.lng,
+        parsedDataLat: parsedData.lat
       });
+      
+      this.currentDetail = detailData;
+      this.showDetailModal = true;
+    },
+    
+    // 关闭详情对话框
+    closeDetailModal() {
+      this.showDetailModal = false;
+      this.currentDetail = null;
+    },
+    
+    // 获取GPS坐标字符串
+    getGpsCoordinate(lng, lat) {
+      if (lng && lat) {
+        return `${lng}, ${lat}`;
+      }
+      return '-';
+    },
+    
+    // 预览详情图片
+    previewDetailImages(currentIndex) {
+      if (this.currentDetail && this.currentDetail.images && this.currentDetail.images.length > 0) {
+        uni.previewImage({
+          urls: this.currentDetail.images,
+          current: this.currentDetail.images[currentIndex]
+        });
+      }
     },
 
-    // 处理损坏数据点击
-    handleCorruptedClick(index) {
+    // 处理损坏数据删除
+    handleCorruptedDelete(index) {
       const item = this.listData[index];
       uni.showModal({
         title: '提示',
@@ -301,6 +427,26 @@ export default {
       await this.uploadRecords(selectedItems);
     },
     
+    // 离线上报时获取经纬度（仅在缓存中没有经纬度时调用）
+    async getLocationForUpload() {
+      return new Promise((resolve) => {
+        uni.getLocation({
+          type: 'gcj02',
+          timeout: 20000,
+          success: (res) => {
+            const lng = res.longitude != null ? String(res.longitude) : '';
+            const lat = res.latitude != null ? String(res.latitude) : '';
+            console.log('离线上报重新获取到经纬度:', { lng, lat });
+            resolve({ lng, lat });
+          },
+          fail: (err) => {
+            console.error('离线上报获取经纬度失败:', err);
+            resolve({ lng: '', lat: '' });
+          }
+        });
+      });
+    },
+    
     // 上传记录（核心上传逻辑）
     async uploadRecords(records) {
       this.uploading = true;
@@ -329,6 +475,20 @@ export default {
             markRecordUploaded(item.id, false, '数据解析失败');
             failedCount++;
             continue;
+          }
+          
+          // 如果缓存的数据中没有经纬度，上报前再重新获取一次经纬度
+          if ((!submitData.lng || !submitData.lat) && rawData.type === 'attendance') {
+            try {
+              const { lng, lat } = await this.getLocationForUpload();
+              if (lng && lat) {
+                submitData.lng = submitData.lng || lng;
+                submitData.lat = submitData.lat || lat;
+              }
+            } catch (locErr) {
+              console.error('重新获取经纬度时出错:', locErr);
+              // 获取失败则继续使用原来的数据（可能没有经纬度）
+            }
           }
           
           // 如果有本地图片，先上传图片
@@ -714,5 +874,118 @@ export default {
   justify-content: center;
   margin-top: -30rpx;
   border: 6rpx solid #fff;
+}
+
+/* 详情对话框样式 */
+.modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  width: 90%;
+  max-width: 600rpx;
+  max-height: 80vh;
+  background: #fff;
+  border-radius: 20rpx;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30rpx;
+  border-bottom: 1rpx solid #eee;
+}
+
+.modal-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.modal-close {
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f5f5f5;
+}
+
+.close-icon {
+  font-size: 40rpx;
+  color: #999;
+  line-height: 1;
+}
+
+.modal-body {
+  padding: 30rpx;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.detail-item {
+  margin-bottom: 30rpx;
+}
+
+.detail-item:last-child {
+  margin-bottom: 0;
+}
+
+.detail-label {
+  display: block;
+  font-size: 24rpx;
+  color: #999;
+  margin-bottom: 10rpx;
+}
+
+.detail-value {
+  display: block;
+  font-size: 28rpx;
+  color: #333;
+  word-break: break-all;
+}
+
+.detail-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20rpx;
+  margin-top: 10rpx;
+}
+
+.detail-img {
+  width: 200rpx;
+  height: 200rpx;
+  border-radius: 12rpx;
+  background: #f5f5f5;
+}
+
+.modal-footer {
+  padding: 30rpx;
+  border-top: 1rpx solid #eee;
+}
+
+.modal-close-btn {
+  width: 100%;
+  height: 80rpx;
+  line-height: 80rpx;
+  background: #0F58B6;
+  color: #fff;
+  border-radius: 40rpx;
+  font-size: 30rpx;
+  border: none;
 }
 </style>

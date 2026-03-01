@@ -286,38 +286,57 @@ export default {
 			});
 		},
 		 
-		// 获取位置信息
+		// 获取位置信息（支持离线GPS定位）
 		async getLocation() {
-			return new Promise((resolve) => {
+			return new Promise((resolve, reject) => {
+				// 尝试获取GPS定位（不依赖网络）
+				// 注意：GPS定位理论上不依赖网络，但首次定位可能需要更长时间
 				uni.getLocation({
-					type: 'gcj02',
+					type: 'gcj02', // 使用国测局坐标系（GCJ-02）
+					altitude: false, // 不需要高度信息，加快获取速度
+					geocode: false, // 禁用逆地理编码，避免依赖网络
+					timeout: 20000, // 20秒超时（离线时GPS可能需要更长时间，特别是首次定位）
 					success: (res) => {
-						this.lng = String(res.longitude);
-						this.lat = String(res.latitude);
+						// GPS定位成功，先保存经纬度（不依赖网络）
+						if (res.longitude && res.latitude) {
+							this.lng = String(res.longitude);
+							this.lat = String(res.latitude);
+							console.log('GPS定位成功（离线也可用）:', { lng: this.lng, lat: this.lat });
+						}
 						
+						// 尝试逆地理编码获取地址（需要网络，失败也不影响GPS坐标）
+						// 注意：即使离线，GPS坐标已经获取到了，可以正常缓存
 						uni.request({
 							url: `https://apis.map.qq.com/ws/geocoder/v1/?location=${res.latitude},${res.longitude}&key=OB4BZ-D4W3U-B7VVO-4PJWW-6TKDJ-WPB77&get_poi=1`,
+							timeout: 5000, // 地址查询5秒超时
 							success: (addrRes) => {
 								if (addrRes.data && addrRes.data.result) {
 									this.address = addrRes.data.result.address || '';
-								} else {
-									this.address = `经度:${this.lng},纬度:${this.lat}`;
 								}
 								resolve({ lng: this.lng, lat: this.lat, address: this.address });
 							},
 							fail: () => {
-								// 【修复3】：断网时依然保留经纬度作为打卡地址
-								this.address = `经度:${this.lng},纬度:${this.lat}`;
-								resolve({ lng: this.lng, lat: this.lat, address: this.address });
+								// 网络请求失败不影响，GPS坐标已经获取到了
+								console.log('逆地理编码失败（可能离线），但GPS坐标已获取，可以正常缓存');
+								this.address = '';
+								resolve({ lng: this.lng, lat: this.lat, address: '' });
 							}
 						});
 					},
 					fail: (err) => {
-						console.error('获取位置失败:', err);
-						this.lng = '';
-						this.lat = '';
-						this.address = '未获取到位置';
-						resolve({ lng: '', lat: '', address: this.address });
+						console.error('GPS定位失败:', err);
+						// 如果GPS获取失败，检查是否有之前的位置信息（可能是上次定位的缓存）
+						if (this.lng && this.lat) {
+							console.log('GPS定位失败，使用之前的位置信息');
+							resolve({ lng: this.lng, lat: this.lat, address: this.address || '' });
+						} else {
+							// 完全失败，返回空值
+							console.warn('GPS定位完全失败，可能原因：1.未开启定位权限 2.室内信号差 3.首次定位需要网络辅助');
+							this.lng = '';
+							this.lat = '';
+							this.address = '';
+							resolve({ lng: '', lat: '', address: '' });
+						}
 					}
 				});
 			});
@@ -343,93 +362,284 @@ export default {
 			return successUrls.join(',');
 		},
 		 
-		// 【终极修复4】：乐观上传 + 精准缓存 + 安全传参 pid
+		// 检测网络状态
+		async checkNetworkStatus() {
+			return new Promise((resolve) => {
+				uni.getNetworkType({
+					success: (res) => {
+						// networkType: wifi/2g/3g/4g/5g/unknown/none
+						resolve(res.networkType !== 'none' && res.networkType !== 'unknown')
+					},
+					fail: () => {
+						resolve(false) // 获取失败时认为离线
+					}
+				})
+			})
+		},
+		 
+		// 提交打卡
 		async submitCheckIn() {
-			if (!this.deviceId || this.deviceId === 0) { uni.showToast({ title: '请先扫码获取设备信息', icon: 'none' }); return; }
-			if (!this.shebei || !this.shebei.trim()) { uni.showToast({ title: '设备编号不能为空', icon: 'none' }); return; }
-			if (!this.message || (this.message !== '在用' && this.message !== '维修')) { uni.showToast({ title: '请选择打卡类型', icon: 'none' }); return; }
-			if (!this.enterTime) { uni.showToast({ title: '时间信息错误', icon: 'none' }); return; }
-			if (this.submitting) return;
-			
-			this.submitting = true;
-			
-			try {
-				uni.showLoading({ title: '提交中...', mask: true });
-				
-				await this.getLocation();
-				
-				const selectedProjectIds = uni.getStorageSync('selectedProjectIds');
-				const pidStr = selectedProjectIds ? selectedProjectIds.split(',')[0] : '';
-				const pid = pidStr ? Number(pidStr) : null; 
-				
-				let timeStr = this.enterTime;
-				if (!timeStr.includes(':')) timeStr = timeStr + ' 00:00:00';
-				else if (timeStr.split(':').length === 2) timeStr = timeStr + ':00';
-				
-				const type = this.message === "在用" ? 1 : 2;
-				
-				let imgs = await this.uploadImages();
-				
-				const submitData = {
-					deviceId: this.deviceId,
-					deviceNo: this.shebei || "",
-					type: type,
-					address: this.address || "",
-					lng: this.lng || "",
-					lat: this.lat || "",
-					imgs: imgs || "",
-					remark: "",
-					time: timeStr,
-					status: 0,
-					pid: pid,         
-					projectId: pid    
-				};
-				
-				try {
-					await http.post(API_ENDPOINTS.ATTENDANCE_ADD_API, submitData, {
-						header: { 'Content-Type': 'application/json' }
-					});
-					
-					uni.hideLoading();
-					uni.showToast({ title: "打卡成功", icon: "success" });
-					setTimeout(() => { uni.navigateBack(); }, 1500);
-					
-				} catch (error) {
-					if (error && typeof error === 'object' && error.code !== undefined && error.code !== 0) {
-						uni.hideLoading();
-						this.submitting = false;
-						return;
-					}
-					
-					console.warn('网络不稳定，转入离线流程', error);
-					
-					const cacheData = {
-						type: 'attendance',
-						deviceId: this.deviceId,
-						deviceNo: this.shebei,
-						deviceName: this.shengchan,
-						tag: this.message,
-						time: timeStr,
-						address: this.address || "",
-						lng: this.lng || "",
-						lat: this.lat || "",
-						imgs: imgs, 
-						images: this.images || [], 
-						remark: "",
-						status: 0,
-						data: JSON.stringify(submitData) 
-					};
-					
-					const result = saveCacheRecord(cacheData);
-					uni.hideLoading();
-					
-					if (result.success) {
-						uni.showToast({ title: '网络不稳定，已自动保存到本地离线', icon: 'none', duration: 3000, mask: true });
-						setTimeout(() => { uni.navigateBack(); }, 1500);
-					} else {
-						uni.showModal({ title: '提示', content: result.error || '缓存失败，请重试', showCancel: false, confirmText: '确定', confirmColor: '#E02020' });
-					}
-				}
+			 // 表单验证
+			 if (!this.deviceId || this.deviceId === 0) {
+				 uni.showToast({
+					 title: '请先扫码获取设备信息',
+					 icon: 'none'
+				 });
+				 return;
+			 }
+			 
+			 if (!this.shebei || !this.shebei.trim()) {
+				 uni.showToast({
+					 title: '设备编号不能为空',
+					 icon: 'none'
+				 });
+				 return;
+			 }
+			 
+			 if (!this.message || (this.message !== '在用' && this.message !== '维修')) {
+				 uni.showToast({
+					 title: '请选择打卡类型',
+					 icon: 'none'
+				 });
+				 return;
+			 }
+			 
+			 if (!this.enterTime) {
+				 uni.showToast({
+					 title: '时间信息错误',
+					 icon: 'none'
+				 });
+				 return;
+			 }
+			 
+			 // 防止重复提交
+			 if (this.submitting) {
+				 return;
+			 }
+			 
+			 this.submitting = true;
+			 
+			 try {
+				 uni.showLoading({
+					 title: '提交中...',
+					 mask: true
+				 });
+				 
+				 // 1. 获取位置信息
+				 await this.getLocation();
+				 
+				 // 2. 上传图片（离线时也上传，如果失败则在离线数据中保存图片路径）
+				 let imgs = '';
+				 try {
+					 imgs = await this.uploadImages();
+				 } catch (imgError) {
+					 console.warn('图片上传失败，将在离线数据中保存图片路径', imgError);
+				 }
+				 
+				 // 3. 确定类型：1在用 2维修
+				 const type = this.message === "在用" ? 1 : 2;
+				 
+				 // 4. 格式化时间，确保格式为 YYYY-MM-DD HH:mm:ss
+				 let timeStr = this.enterTime;
+				 if (!timeStr.includes(':')) {
+					 timeStr = timeStr + ' 00:00:00';
+				 } else if (timeStr.split(':').length === 2) {
+					 timeStr = timeStr + ':00';
+				 }
+				 
+				 // 5. 构建提交数据
+				 const submitData = {
+					 deviceId: this.deviceId,
+					 deviceNo: this.shebei || "", // 设备编号
+					 type: type, // 1在用 2维修
+					 address: this.address || "",
+					 lng: this.lng || "",
+					 lat: this.lat || "",
+					 imgs: imgs || "",
+					 remark: "",
+					 time: timeStr,
+					 status: 0 // 0正常 1异常
+				 };
+				 
+				 // 6. 检测网络状态
+				 const isOnline = await this.checkNetworkStatus();
+				 
+				 if (!isOnline) {
+					 // 离线状态，确保已获取位置信息（GPS不依赖网络）
+					 // 如果之前获取失败，再次尝试获取GPS坐标
+					 if (!this.lng || !this.lat) {
+						 console.log('离线状态下重新尝试获取GPS坐标...');
+						 await this.getLocation();
+					 }
+					 
+					 // 调试：打印要保存的位置信息
+					 console.log('离线缓存 - 位置信息:', {
+						 address: this.address,
+						 lng: this.lng,
+						 lat: this.lat,
+						 hasAddress: !!this.address,
+						 hasLng: !!this.lng,
+						 hasLat: !!this.lat
+					 });
+					 
+					 // 离线状态，保存到本地缓存
+					 uni.hideLoading();
+					 
+					 const cacheData = {
+						 type: 'attendance', // 打卡类型
+						 deviceId: this.deviceId,
+						 deviceNo: this.shebei,
+						 deviceName: this.shengchan,
+						 tag: this.message, // 在用 或 维修
+						 time: timeStr,
+						 address: this.address || "", // 地址（离线时可能为空）
+						 lng: this.lng || "", // 确保包含经纬度（GPS坐标，离线时应该能获取）
+						 lat: this.lat || "", // 确保包含经纬度（GPS坐标，离线时应该能获取）
+						 imgs: imgs || "",
+						 images: this.images || [], // 保存本地图片路径
+						 remark: "",
+						 status: 0,
+						 data: JSON.stringify(submitData) // 保存完整提交数据（包含经纬度）
+					 };
+					 
+					 // 调试：打印实际保存的缓存数据
+					 console.log('离线缓存 - 保存的数据:', {
+						 address: cacheData.address,
+						 lng: cacheData.lng,
+						 lat: cacheData.lat,
+						 submitDataAddress: submitData.address,
+						 submitDataLng: submitData.lng,
+						 submitDataLat: submitData.lat
+					 });
+					 
+					 const result = saveCacheRecord(cacheData);
+					 
+					 if (result.success) {
+						 // 显示黄色提示
+						 uni.showToast({
+							 title: '当前无网络，数据已本地缓存',
+							 icon: 'none',
+							 duration: 3000,
+							 mask: true
+						 });
+						 
+						 // 延迟返回上一页
+						 setTimeout(() => {
+							 uni.navigateBack();
+						 }, 1500);
+					 } else {
+						 // 存储失败（可能是空间不足）
+						 uni.showModal({
+							 title: '提示',
+							 content: result.error || '缓存失败，请重试',
+							 showCancel: false,
+							 confirmText: '确定',
+							 confirmColor: '#E02020'
+						 });
+					 }
+					 return;
+				 }
+				 
+				 // 在线状态，正常提交
+				 // 如果 code !== 0，request.js 会显示 msg 并 reject，这里会被 catch 捕获
+				 const result = await http.post(API_ENDPOINTS.ATTENDANCE_ADD_API, submitData, {
+					 header: {
+						 'Content-Type': 'application/json'
+					 }
+				 });
+				 
+				 uni.hideLoading();
+				 uni.showToast({
+					 title: "打卡成功",
+					 icon: "success"
+				 });
+				 
+				 // 提交成功后，延迟返回上一页
+				 setTimeout(() => {
+					 uni.navigateBack();
+				 }, 1500);
+				 
+			 } catch (error) {
+				 console.error('提交打卡失败:', error);
+				 uni.hideLoading();
+				 
+				 // 判断是否是接口返回的错误（有 code 和 msg）
+				 // 如果 code !== 0，说明是业务错误（如权限不足），不应该缓存
+				 if (error && typeof error === 'object' && error.code !== undefined && error.code !== 0) {
+					 // 接口返回的错误，request.js 已经显示了 msg，这里直接返回
+					 // 不需要额外处理，也不需要缓存
+					 // 注意：finally 块会执行，所以 submitting 会被正确重置
+					 return;
+				 }
+				 
+				 // 如果是网络错误或其他错误，尝试保存到离线缓存
+				 // 确保已获取位置信息
+				 if (!this.lng || !this.lat) {
+					 console.log('网络错误，重新尝试获取GPS坐标...');
+					 await this.getLocation();
+				 }
+				 
+				 try {
+					 // 格式化时间，确保格式为 YYYY-MM-DD HH:mm:ss
+					 let errorTimeStr = this.enterTime;
+					 if (!errorTimeStr.includes(':')) {
+						 errorTimeStr = errorTimeStr + ' 00:00:00';
+					 } else if (errorTimeStr.split(':').length === 2) {
+						 errorTimeStr = errorTimeStr + ':00';
+					 }
+					 
+					 const errorSubmitData = {
+						 deviceId: this.deviceId,
+						 deviceNo: this.shebei || "",
+						 type: this.message === "在用" ? 1 : 2, // 1在用 2维修
+						 address: this.address || "",
+						 lng: this.lng || "", // 确保包含经纬度
+						 lat: this.lat || "", // 确保包含经纬度
+						 imgs: "",
+						 remark: "",
+						 time: errorTimeStr,
+						 status: 0
+					 };
+					 
+					 const cacheData = {
+						 type: 'attendance',
+						 deviceId: this.deviceId,
+						 deviceNo: this.shebei,
+						 deviceName: this.shengchan,
+						 tag: this.message, // 在用 或 维修
+						 time: errorTimeStr,
+						 address: this.address || "",
+						 lng: this.lng || "", // 确保包含经纬度
+						 lat: this.lat || "", // 确保包含经纬度
+						 imgs: "",
+						 images: this.images || [],
+						 remark: "",
+						 status: 0,
+						 data: JSON.stringify(errorSubmitData) // 保存完整提交数据（包含经纬度）
+					 };
+					 
+					 const cacheResult = saveCacheRecord(cacheData);
+					 if (cacheResult.success) {
+						 uni.showToast({
+							 title: '提交失败，数据已缓存',
+							 icon: 'none',
+							 duration: 3000
+						 });
+						 setTimeout(() => {
+							 uni.navigateBack();
+						 }, 1500);
+					 } else {
+						 uni.showToast({
+							 title: "提交失败，请重试",
+							 icon: "none"
+						 });
+					 }
+				 } catch (cacheError) {
+					 uni.showToast({
+						 title: "提交失败，请重试",
+						 icon: "none"
+					 });
+				 }
 			} finally {
 				this.submitting = false;
 			}
