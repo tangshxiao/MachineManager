@@ -13,7 +13,7 @@
         <view class="dc-row-bottom">
           <image src="/static/icon_time_img.png" class="time-icon"></image>
           <text class="dc-time-label">最后打卡时间：</text>
-          <text class="dc-time-value">{{ formatTime(deviceInfo.lastTime) || '--' }}</text>
+          <text class="dc-time-value">{{ formatTime(lastTimeFromList) || '--' }}</text>
         </view>
       </view>
     </view>
@@ -188,6 +188,16 @@ export default {
     }
   },
 
+  computed: {
+    // 最后打卡时间：取列表中第一条记录的 time，无列表时用设备详情的 lastTime
+    lastTimeFromList() {
+      if (this.list.length > 0) {
+        const first = this.list[0]
+        return first.createTime || first.time || ''
+      }
+      return this.deviceInfo.lastTime || ''
+    }
+  },
   onPullDownRefresh() {
     this.getDeviceInfo()
     this.getHistoryList(true)

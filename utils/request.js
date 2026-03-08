@@ -1,6 +1,17 @@
 // 通用网络请求工具（uni-app）
 import logger from './logger.js'
 
+// 统一无网络提示文案
+const NO_NETWORK_MSG = '当前无网络，请检查网络连接'
+
+// 显示无网络提示
+function showNoNetworkToast() {
+  uni.showToast({
+    title: NO_NETWORK_MSG,
+    icon: 'none'
+  })
+}
+
 // 核心请求方法
 const request = (options = {}) => {
   const {
@@ -52,69 +63,87 @@ const request = (options = {}) => {
   }, requestId))
 
   return new Promise((resolve, reject) => {
-    uni.request({
-      // 这里假设传入的 url 已经是完整地址（在 config/api.js 中配置）
-      url,
-      method,
-      data: requestData,
-      header: {
-		  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        // 使用传入的 Content-Type 或默认值
-        'Content-Type': contentType,
-        // 后端如果使用 Authorization 或 token 任一字段，都可以从这里取到
-        'Authorization': token ? `Bearer ${token}` : '',
-        'token': token || '',
-        ...header
+    // 先检测网络类型，无网络时直接提示并拒绝，避免发请求
+    uni.getNetworkType({
+      success: (netRes) => {
+        if (netRes.networkType === 'none') {
+          if (showLoading) uni.hideLoading()
+          showNoNetworkToast()
+          reject(new Error(NO_NETWORK_MSG))
+          return
+        }
+        doRequest()
       },
-      success: (res) => {
-        const duration = Date.now() - startTime
-        const { statusCode, data, header } = res
+      fail: () => { doRequest() } // 获取失败时照常发请求，由 request fail 兜底
+    })
 
-        // 记录响应日志
-        logger.addLog(logger.formatResponseLog({
-          statusCode,
-          data,
-          header
-        }, requestId, duration, url))
+    function doRequest() {
+      uni.request({
+        // 这里假设传入的 url 已经是完整地址（在 config/api.js 中配置）
+        url,
+        method,
+        data: requestData,
+        header: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          // 使用传入的 Content-Type 或默认值
+          'Content-Type': contentType,
+          // 后端如果使用 Authorization 或 token 任一字段，都可以从这里取到
+          'Authorization': token ? `Bearer ${token}` : '',
+          'token': token || '',
+          ...header
+        },
+        success: (res) => {
+          const duration = Date.now() - startTime
+          const { statusCode, data, header } = res
 
-        if (statusCode === 200) {
-          // 按常见后端返回结构：{ code, data, msg }
-          // 只有 code === 0 才是正常
-          if (data && data.code === 0) {
-            resolve(data.data)
+          // 记录响应日志
+          logger.addLog(logger.formatResponseLog({
+            statusCode,
+            data,
+            header
+          }, requestId, duration, url))
+
+          if (statusCode === 200) {
+            // 按常见后端返回结构：{ code, data, msg }
+            // code === -1 表示登录失效，不提示，直接跳转登录（选择项目页）
+            if (data && data.code === -1) {
+              uni.reLaunch({ url: '/pages/index/index' })
+              reject(data)
+              return
+            }
+            if (data && data.code === 0) {
+              resolve(data.data)
+            } else {
+              uni.showToast({
+                title: (data && data.msg) || '请求失败',
+                icon: 'none'
+              })
+              reject(data)
+            }
           } else {
             uni.showToast({
-              title: (data && data.msg) || '请求失败',
+              title: '网络错误：' + statusCode,
               icon: 'none'
             })
-            reject(data)
+            reject(res)
           }
-        } else {
-          uni.showToast({
-            title: '网络错误：' + statusCode,
-            icon: 'none'
-          })
-          reject(res)
+        },
+        fail: (err) => {
+          const duration = Date.now() - startTime
+
+          // 记录错误日志
+          logger.addLog(logger.formatErrorLog(err, requestId, duration, url))
+
+          showNoNetworkToast()
+          reject(err)
+        },
+        complete: () => {
+          if (showLoading) {
+            uni.hideLoading()
+          }
         }
-      },
-      fail: (err) => {
-        const duration = Date.now() - startTime
-        
-        // 记录错误日志
-        logger.addLog(logger.formatErrorLog(err, requestId, duration, url))
-        
-        uni.showToast({
-          title: '请求失败，请检查网络',
-          icon: 'none'
-        })
-        reject(err)
-      },
-      complete: () => {
-        if (showLoading) {
-          uni.hideLoading()
-        }
-      }
-    })
+      })
+    }
   })
 }
 
@@ -203,7 +232,12 @@ const upload = (filePath, config = {}) => {
             header: res.header || {}
           }, requestId, duration, url))
           
-          // 只有 code === 0 才是正常
+          // code === -1 表示登录失效，不提示，直接跳转登录（选择项目页）
+          if (data && data.code === -1) {
+            uni.reLaunch({ url: '/pages/index/index' })
+            reject(data)
+            return
+          }
           if (data && data.code === 0) {
             resolve(data.data)
           } else {
@@ -226,14 +260,11 @@ const upload = (filePath, config = {}) => {
       },
       fail: (err) => {
         const duration = Date.now() - startTime
-        
+
         // 记录上传错误日志
         logger.addLog(logger.formatErrorLog(err, requestId, duration, url))
-        
-        uni.showToast({
-          title: '上传失败，请检查网络',
-          icon: 'none'
-        })
+
+        showNoNetworkToast()
         reject(err)
       },
       complete: () => {

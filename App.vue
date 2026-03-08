@@ -69,7 +69,10 @@
 								const serverVersion = serverData.version;
 
 								if (serverVersion && this.compareVersion(serverVersion, currentVersion)) {
-									this.showUpdateModal(serverData);
+									// 显示更新对话框前，按 uni-app 官方方式处理权限（如通知权限）
+									this.ensureUpdatePermission(() => {
+										this.showUpdateModal(serverData);
+									});
 								}
 							}
 						},
@@ -78,6 +81,49 @@
 						}
 					});
 				});
+			},
+
+			/**
+			 * 显示更新弹窗前按 uni-app 官方方式处理权限（如 Android 13+ 通知权限）
+			 * 使用 uni.getAppAuthorizeSetting() 查询、uni.openAppAuthorizeSetting() 打开设置
+			 * @param {Function} callback 权限处理完成后执行，用于显示更新对话框
+			 */
+			ensureUpdatePermission(callback) {
+				// #ifdef APP-PLUS
+				const systemInfo = uni.getSystemInfoSync();
+				if (systemInfo.platform !== 'android') {
+					callback();
+					return;
+				}
+				try {
+					// uni-app 官方 API：获取应用授权设置（HBuilderX 3.5.3+）
+					const setting = uni.getAppAuthorizeSetting();
+					// Android 13+ 通知权限：未授权时引导用户去设置页
+					const needNotify = setting.notificationAuthorized === 'denied' || setting.notificationAuthorized === false;
+					if (needNotify) {
+						uni.showModal({
+							title: '权限说明',
+							content: '为在后台下载更新时及时提醒您，请开启通知权限。是否前往设置？',
+							confirmText: '去设置',
+							cancelText: '暂不',
+							success: (res) => {
+								if (res.confirm) {
+									// uni-app 官方 API：打开应用权限设置页
+									uni.openAppAuthorizeSetting();
+									// 去设置后不自动弹出更新框，下次启动再检查
+								} else {
+									callback();
+								}
+							},
+							fail: () => { callback(); }
+						});
+						return;
+					}
+				} catch (e) {
+					console.warn('ensureUpdatePermission:', e);
+				}
+				// #endif
+				callback();
 			},
 
 			showUpdateModal(serverData) {
@@ -121,12 +167,22 @@
 						waiting.close();
 						uni.hideLoading();
 						if (downloadRes.statusCode === 200) {
-							console.log('下载成功，准备安装');
+							console.log('下载成功，准备安装，本地apk路径为：', downloadRes.tempFilePath);
 							plus.runtime.install(downloadRes.tempFilePath, { force: false }, () => {
 								plus.runtime.restart();
 							}, (e) => {
 								console.error('安装失败', e);
-								uni.showToast({ title: '安装失败', icon: 'none' });
+								let msg = '';
+								if (e && (e.message || e.code)) {
+									msg = e.message || ('错误码：' + e.code);
+								} else {
+									msg = '请卸载旧版本后重试';
+								}
+								uni.showToast({
+									title: '安装失败：' + msg,
+									icon: 'none',
+									duration: 4000
+								});
 							});
 						} else {
 							uni.showToast({ title: '下载失败', icon: 'none' });

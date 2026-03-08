@@ -35,12 +35,12 @@
 				</picker>
 			</view>
 			<view class="Content-text">
-				当前时间:<view class="Content-text-left">
-					{{  enterTime }}
+				打卡时间:<view class="Content-text-left">
+					{{ (gpsObtainTime && lng && lat) ? gpsObtainTime : enterTime }}
 				</view>
 			</view>
 			<view class="Content-text">
-				证明材料:
+				证明材料（必填）:
 			</view>
 			<view v-if="!images.length" class="photo" @click="upload">
 				<view class="photo-tb" >
@@ -64,7 +64,7 @@
 				</view>
 			</view>
 			<view class="photo-text">
-				支持JPG/PNG格式，最多上传5张（已选 {{ images.length }} 张）
+				必填，至少1张现场设备照片，支持JPG/PNG格式，最多5张（已选 {{ images.length }} 张）
 			</view>
 			<view class="Content-text qr-code-row">
 				<view class="qr-code-label">设备二维码:</view>
@@ -117,6 +117,7 @@ export default {
 			address: "",
 			lng: "",
 			lat: "",
+			gpsObtainTime: "", // 定位成功那一刻的时间，用于打卡上报（优先于 enterTime）
 			submitting: false,
 			qrCodeUrl: ""
 		}
@@ -131,8 +132,10 @@ export default {
 	},
 
 	onShow() {
-		// 每次显示页面时触发扫码
-		// this.scanCode(); // 如果不想每次切回来都强行扫码，可以注释掉这行
+		// 每次进入页面时，先尝试预获取一次定位，提高后续打卡成功率
+		this.getLocation();
+		// 每次显示页面时触发扫码（如需每次都扫码可放开）
+		// this.scanCode();
 	},
 	  
 	methods: {
@@ -219,14 +222,20 @@ export default {
 			} catch (e) {
 				uni.hideLoading();
 				console.error("处理二维码失败", e);
-				
-				// 【修复2】：精准区分解析错误与网络错误
-				if (e instanceof SyntaxError) {
+
+				const errMsg = (e && (e.errMsg || e.message || (typeof e === 'string' ? e : ''))) || '';
+				// 网络/请求失败（含 request:fail、无网络、超时等）
+				const isNetworkError = /request:fail|timeout|无网络|网络|连接|失败/i.test(errMsg);
+				// 断网时网关可能返回 HTML，运行时当 JSON 解析会抛 SyntaxError（如 Unexpected token < in JSON at position 0）
+				const isResponseParseError = e instanceof SyntaxError && /Unexpected token|position|JSON/i.test(errMsg);
+
+				if (isNetworkError || isResponseParseError) {
+					uni.showToast({ title: '网络连接失败，请检查网络', icon: 'none' });
+				} else if (e instanceof SyntaxError) {
 					uni.showToast({ title: '二维码格式错误', icon: 'none' });
 				} else if (e && typeof e === 'object' && e.code !== undefined && e.code !== 0) {
 					// 业务错误，request.js 已提示
 				} else {
-					// 真正的原因：断网
 					uni.showToast({ title: '网络连接失败，请检查网络', icon: 'none' });
 				}
 
@@ -301,7 +310,12 @@ export default {
 						if (res.longitude && res.latitude) {
 							this.lng = String(res.longitude);
 							this.lat = String(res.latitude);
-							console.log('GPS定位成功（离线也可用）:', { lng: this.lng, lat: this.lat });
+							// 记录定位成功这一刻的时间，用于打卡上报（uni-app getLocation 不返回时间，用当前时间表示“GPS 获取到的时间”）
+							const now = new Date();
+							const y = now.getFullYear(), m = String(now.getMonth() + 1).padStart(2, '0'), d = String(now.getDate()).padStart(2, '0');
+							const h = String(now.getHours()).padStart(2, '0'), min = String(now.getMinutes()).padStart(2, '0'), s = String(now.getSeconds()).padStart(2, '0');
+							this.gpsObtainTime = `${y}-${m}-${d} ${h}:${min}:${s}`;
+							console.log('GPS定位成功（离线也可用）:', { lng: this.lng, lat: this.lat, gpsObtainTime: this.gpsObtainTime });
 						}
 						
 						// 尝试逆地理编码获取地址（需要网络，失败也不影响GPS坐标）
@@ -325,16 +339,24 @@ export default {
 					},
 					fail: (err) => {
 						console.error('GPS定位失败:', err);
+						const errMsg = (err && err.errMsg) ? String(err.errMsg) : '';
 						// 如果GPS获取失败，检查是否有之前的位置信息（可能是上次定位的缓存）
 						if (this.lng && this.lat) {
 							console.log('GPS定位失败，使用之前的位置信息');
 							resolve({ lng: this.lng, lat: this.lat, address: this.address || '' });
 						} else {
-							// 完全失败，返回空值
-							console.warn('GPS定位完全失败，可能原因：1.未开启定位权限 2.室内信号差 3.首次定位需要网络辅助');
 							this.lng = '';
 							this.lat = '';
 							this.address = '';
+							// 根据错误码给出明确提示：多为系统「定位服务」总开关未开启
+							if (errMsg.includes('定位服务没有开启') || errMsg.includes('缺少定位权限') || errMsg.includes('geolocation:12')) {
+								uni.showModal({
+									title: '定位失败',
+									content: '请先打开手机「定位服务」总开关（在系统设置或下拉菜单中），再允许本应用使用位置权限。',
+									showCancel: false,
+									confirmText: '我知道了'
+								});
+							}
 							resolve({ lng: '', lat: '', address: '' });
 						}
 					}
@@ -412,6 +434,14 @@ export default {
 				 return;
 			 }
 			 
+			 if (!this.images || this.images.length === 0) {
+				 uni.showToast({
+					 title: '请上传现场设备照片',
+					 icon: 'none'
+				 });
+				 return;
+			 }
+			 
 			 // 防止重复提交
 			 if (this.submitting) {
 				 return;
@@ -425,7 +455,7 @@ export default {
 					 mask: true
 				 });
 				 
-				 // 1. 获取位置信息
+				 // 1. 获取位置信息（优先尝试获取，但不在这里直接拦截离线流程）
 				 await this.getLocation();
 				 
 				 // 2. 上传图片（离线时也上传，如果失败则在离线数据中保存图片路径）
@@ -439,8 +469,8 @@ export default {
 				 // 3. 确定类型：1在用 2维修
 				 const type = this.message === "在用" ? 1 : 2;
 				 
-				 // 4. 格式化时间，确保格式为 YYYY-MM-DD HH:mm:ss
-				 let timeStr = this.enterTime;
+				 // 4. 打卡时间：优先使用定位成功那一刻的时间（gpsObtainTime），否则用进入页面时间（enterTime）
+				 let timeStr = (this.gpsObtainTime && this.lng && this.lat) ? this.gpsObtainTime : this.enterTime;
 				 if (!timeStr.includes(':')) {
 					 timeStr = timeStr + ' 00:00:00';
 				 } else if (timeStr.split(':').length === 2) {
@@ -463,6 +493,23 @@ export default {
 				 
 				 // 6. 检测网络状态
 				 const isOnline = await this.checkNetworkStatus();
+				 
+				 // 在线提交时，经纬度必填，避免接口返回“位置信息不能为空”
+				 if (isOnline && (!this.lng || !this.lat)) {
+					 uni.hideLoading();
+					 uni.showModal({
+						 title: '提示',
+						 content: '未获取到位置信息。请确认：1. 已打开手机「定位服务」总开关（设置或下拉菜单）；2. 已允许本应用使用位置权限。',
+						 cancelText: '我知道了',
+						 confirmText: '去设置',
+						 success: (res) => {
+							 if (res.confirm && uni.openAppAuthorizeSetting) {
+								 uni.openAppAuthorizeSetting(); // 跳转到本应用权限设置页
+							 }
+						 }
+					 });
+					 return;
+				 }
 				 
 				 if (!isOnline) {
 					 // 离线状态，确保已获取位置信息（GPS不依赖网络）
@@ -580,8 +627,8 @@ export default {
 				 }
 				 
 				 try {
-					 // 格式化时间，确保格式为 YYYY-MM-DD HH:mm:ss
-					 let errorTimeStr = this.enterTime;
+					 // 打卡时间：优先使用定位成功那一刻的时间
+					 let errorTimeStr = (this.gpsObtainTime && this.lng && this.lat) ? this.gpsObtainTime : this.enterTime;
 					 if (!errorTimeStr.includes(':')) {
 						 errorTimeStr = errorTimeStr + ' 00:00:00';
 					 } else if (errorTimeStr.split(':').length === 2) {

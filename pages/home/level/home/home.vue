@@ -192,13 +192,13 @@
         console.log('最近打卡记录 attendanceList:', this.attendanceList)
       } catch (e) {
         console.error('获取最近打卡记录失败:', e)
-        // request.js 已经显示了接口返回的 msg（如果 code !== 0）
-        // 如果是接口返回的错误，不需要额外处理
         if (e && typeof e === 'object' && e.code !== undefined && e.code !== 0) {
-          // 接口返回的错误，request.js 已经显示了 msg
           return
         }
-        // 其他错误（如网络错误）才显示通用错误提示
+        const msg = (e && (e.message || e.errMsg)) || ''
+        if (/无网络|网络|request:fail|timeout/i.test(msg)) {
+          return // 无网络时 request.js 已提示，不重复
+        }
         uni.showToast({
           title: '获取打卡记录失败',
           icon: 'none'
@@ -229,13 +229,14 @@
         console.log('常用设备 deviceList:', this.deviceList)
       } catch (e) {
         console.error('获取常用设备失败:', e)
-        // request.js 已经显示了接口返回的 msg（如果 code !== 0）
-        // 如果是接口返回的错误，不需要额外处理
+        // request.js 已提示：接口返回错误(msg)、无网络(当前无网络，请检查网络连接)
         if (e && typeof e === 'object' && e.code !== undefined && e.code !== 0) {
-          // 接口返回的错误，request.js 已经显示了 msg
-          return
+          return // 接口返回错误，request.js 已显示 msg
         }
-        // 其他错误（如网络错误）才显示通用错误提示
+        const msg = (e && (e.message || e.errMsg)) || ''
+        if (/无网络|网络|request:fail|timeout/i.test(msg)) {
+          return // 无网络/请求失败，request.js 已提示，不再重复
+        }
         uni.showToast({
           title: '获取常用设备失败',
           icon: 'none'
@@ -340,21 +341,25 @@
     							icon: 'none'
     						});
     					}
-    				} catch (e) {
-    					uni.hideLoading();
-    					console.error('处理二维码失败:', e);
-    					// request.js 已经显示了接口返回的 msg（如果 code !== 0）
-    					// 如果是接口返回的错误，不需要额外处理
-    					if (e && typeof e === 'object' && e.code !== undefined && e.code !== 0) {
-    						// 接口返回的错误，request.js 已经显示了 msg
-    						return
-    					}
-    					// 其他错误（如网络错误）才显示通用错误提示
-    					uni.showToast({
-    						title: '二维码格式错误',
-    						icon: 'none'
-    					});
-    				}
+				} catch (e) {
+					uni.hideLoading();
+					console.error('处理二维码失败:', e);
+
+					const errMsg = (e && (e.errMsg || e.message || (typeof e === 'string' ? e : ''))) || '';
+					const isNetworkError = /request:fail|timeout|无网络|网络|连接|失败/i.test(errMsg);
+					const isResponseParseError = e instanceof SyntaxError && /Unexpected token|position|JSON/i.test(errMsg);
+
+					if (e && typeof e === 'object' && e.code !== undefined && e.code !== 0) {
+						return // 业务错误，request.js 已提示
+					}
+					if (isNetworkError || isResponseParseError) {
+						uni.showToast({ title: '网络连接失败，请检查网络', icon: 'none' });
+					} else if (e instanceof SyntaxError) {
+						uni.showToast({ title: '二维码格式错误', icon: 'none' });
+					} else {
+						uni.showToast({ title: '网络连接失败，请检查网络', icon: 'none' });
+					}
+				}
     			},
     			fail: (err) => {
     				console.log('扫码失败', err);
