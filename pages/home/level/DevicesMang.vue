@@ -84,6 +84,11 @@
         <text class="no-more-text">没有更多数据了</text>
       </view>
     </view>
+
+    <!-- 底部操作按钮 -->
+    <view class="bottom-action-bar">
+      <button class="inout-btn" @click="scanInOut">进/退场</button>
+    </view>
   </view>
 </template>
 
@@ -288,6 +293,25 @@ export default {
 		url: `/pages/home/level/record/device-detail/device-detail?id=${item.id}`
 	  })
 	},
+	// 进/退场：扫码后进入绑定设备页
+	scanInOut() {
+	  uni.scanCode({
+		scanType: ['barCode', 'qrCode'],
+		success: (res) => {
+		  uni.navigateTo({
+			url: '/pages/home/level/BindDevice?qrCode=' + encodeURIComponent(res.result)
+		  })
+		},
+		fail: (err) => {
+		  if (err.errMsg && !err.errMsg.includes('cancel')) {
+			uni.showToast({
+			  title: '扫码失败',
+			  icon: 'none'
+			})
+		  }
+		}
+	  })
+	},
 	// 更新设备状态
 	async updateDeviceStatus(item, status) {
 	  if (!item.id) {
@@ -373,6 +397,10 @@ page {
 	background-color: #F5F8FC; 
 	 font-family: 'iconfont'; 
 	padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
+}
+
+.page-container {
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
 }
 
 
@@ -600,5 +628,26 @@ page {
   font-size: 26rpx;
   color: #999;
   }
+
+.bottom-action-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 20rpx 30rpx calc(20rpx + env(safe-area-inset-bottom));
+  background-color: #ffffff;
+  box-shadow: 0 -4rpx 12rpx rgba(0, 0, 0, 0.08);
+  z-index: 20;
+}
+
+.inout-btn {
+  width: 100%;
+  height: 84rpx;
+  line-height: 84rpx;
+  border-radius: 99rpx;
+  background-color: #004CA2;
+  color: #ffffff;
+  font-size: 30rpx;
+}
 </style>
 

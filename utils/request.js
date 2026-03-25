@@ -12,6 +12,13 @@ function showNoNetworkToast() {
   })
 }
 
+// 清理登录态，避免登录失效后继续携带旧 token
+function clearAuthStorage() {
+  uni.removeStorageSync('token')
+  uni.removeStorageSync('Authorization')
+  uni.removeStorageSync('selectedProjectIds')
+}
+
 // 核心请求方法
 const request = (options = {}) => {
   const {
@@ -19,7 +26,8 @@ const request = (options = {}) => {
     method = 'GET',
     data = {},
     header = {},
-    showLoading = true
+    showLoading = true,
+    suppressNoNetworkToast = false
   } = options
 
   if (!url) {
@@ -68,7 +76,9 @@ const request = (options = {}) => {
       success: (netRes) => {
         if (netRes.networkType === 'none') {
           if (showLoading) uni.hideLoading()
-          showNoNetworkToast()
+          if (!suppressNoNetworkToast) {
+            showNoNetworkToast()
+          }
           reject(new Error(NO_NETWORK_MSG))
           return
         }
@@ -107,6 +117,7 @@ const request = (options = {}) => {
             // 按常见后端返回结构：{ code, data, msg }
             // code === -1 表示登录失效，不提示，直接跳转登录（选择项目页）
             if (data && data.code === -1) {
+              clearAuthStorage()
               uni.reLaunch({ url: '/pages/index/index' })
               reject(data)
               return
@@ -134,7 +145,9 @@ const request = (options = {}) => {
           // 记录错误日志
           logger.addLog(logger.formatErrorLog(err, requestId, duration, url))
 
-          showNoNetworkToast()
+          if (!suppressNoNetworkToast) {
+            showNoNetworkToast()
+          }
           reject(err)
         },
         complete: () => {
@@ -234,6 +247,7 @@ const upload = (filePath, config = {}) => {
           
           // code === -1 表示登录失效，不提示，直接跳转登录（选择项目页）
           if (data && data.code === -1) {
+            clearAuthStorage()
             uni.reLaunch({ url: '/pages/index/index' })
             reject(data)
             return

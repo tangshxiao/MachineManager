@@ -38,6 +38,14 @@
 							离线存储
 						</view>
 					</view>
+
+					<view class="user-card-Function-imga"  @click="goToDeviceManagement">
+						<image src="/imgs/shouyetu2.png" alt="" />
+						<view class="user-card-Function-text">
+							设备管理
+						</view>
+					</view>
+
 				</view>
 			</view>
 			<view class="user-card-Record" @click="goToAllRecords">
@@ -121,6 +129,8 @@
 	import http from '@/utils/request.js'
 	import API_ENDPOINTS from '@/config/api.js'
 	import { getAllCacheRecords, markRecordUploaded, getCacheStats } from '@/utils/offlineCache.js'
+
+	const HOME_DEVICE_LIST_CACHE_KEY = 'HOME_DEVICE_LIST_CACHE'
 	
 	export default {
   data() {
@@ -224,6 +234,11 @@
         })
         const records = (res && res.records) || []
         this.deviceList = records
+        // 缓存首页设备列表 records，供后续离线/快速读取使用
+        uni.setStorageSync(HOME_DEVICE_LIST_CACHE_KEY, JSON.stringify({
+          records,
+          cacheTime: Date.now()
+        }))
         this.deviceCurrent = (res && res.current) || this.deviceCurrent
         this.deviceSize = (res && res.size) || this.deviceSize
         console.log('常用设备 deviceList:', this.deviceList)
@@ -301,6 +316,9 @@
     					
     					const qrDetails = await http.post(API_ENDPOINTS.DEVICE_QR_DETAILS_API, {
     						qrNo: qrData.qrNo
+    					}, {
+    						showLoading: false,
+    						suppressNoNetworkToast: true
     					});
     					
     					uni.hideLoading();
@@ -353,11 +371,19 @@
 						return // 业务错误，request.js 已提示
 					}
 					if (isNetworkError || isResponseParseError) {
-						uni.showToast({ title: '网络连接失败，请检查网络', icon: 'none' });
+						// 接口失败/无网络时，允许直接进入打卡页，后续走离线缓存
+						uni.showToast({ title: '网络异常，进入离线打卡', icon: 'none' });
+						uni.navigateTo({
+							url: '/pages/home/level/UploadData?result=' + encodeURIComponent(jieguo.result)
+						});
 					} else if (e instanceof SyntaxError) {
 						uni.showToast({ title: '二维码格式错误', icon: 'none' });
 					} else {
-						uni.showToast({ title: '网络连接失败，请检查网络', icon: 'none' });
+						// 其他异常也允许继续打卡，避免流程被阻断
+						uni.showToast({ title: '设备信息校验失败，进入打卡页', icon: 'none' });
+						uni.navigateTo({
+							url: '/pages/home/level/UploadData?result=' + encodeURIComponent(jieguo.result)
+						});
 					}
 				}
     			},
@@ -389,6 +415,48 @@
 	Offline(){
 		uni.navigateTo({
 		  url: '/pages/home/level/Offline/Offline'
+		});
+	},
+	// 设备管理入口：有设备进管理页，无设备进扫码绑定
+	async goToDeviceManagement() {
+		try {
+			const res = await http.post(API_ENDPOINTS.DEVICE_LIST_API, {
+				sort: 0,
+				current: 1,
+				size: 1
+			});
+			const hasDevice = !!(res && Array.isArray(res.records) && res.records.length > 0);
+			if (hasDevice) {
+				uni.switchTab({
+					url: '/pages/home/level/DevicesMang'
+				});
+				return;
+			}
+		} catch (e) {
+			console.error('查询设备列表失败:', e);
+			// 查询失败时不阻断，按无设备处理
+		}
+
+		this.goToBindDeviceScan();
+	},
+	// 扫码后进入绑定设备
+	goToBindDeviceScan() {
+		uni.scanCode({
+			scanType: ['barCode', 'qrCode'],
+			success: (res) => {
+				uni.navigateTo({
+					url: '/pages/home/level/BindDevice?qrCode=' + encodeURIComponent(res.result)
+				});
+			},
+			fail: (err) => {
+				console.error('扫码失败:', err);
+				if (err.errMsg && !err.errMsg.includes('cancel')) {
+					uni.showToast({
+						title: '扫码失败',
+						icon: 'none'
+					});
+				}
+			}
 		});
 	},
 	// 更多功能
@@ -643,17 +711,30 @@
 		padding: 20rpx 30rpx;
 		display: flex;
 		justify-content: space-between;
-		align-items: center;
+		align-items: flex-start;
+		gap: 16rpx;
 		font-size: 26rpx;
 		color: #F57C00;
+	}
+
+	.network-notice text{
+		flex: 1;
+		min-width: 0;
+		line-height: 1.4;
+		word-break: break-all;
 	}
 	
 	.notice-upload-btn {
 		background: #FF9800;
 		color: #fff;
-		padding: 10rpx 30rpx;
+		padding: 10rpx 24rpx;
 		border-radius: 30rpx;
 		font-size: 24rpx;
+		flex-shrink: 0;
+		min-width: 128rpx;
+		text-align: center;
+		white-space: nowrap;
+		line-height: 1.2;
 	}
 	
 	/* 无网络提示条 */

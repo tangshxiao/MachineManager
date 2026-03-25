@@ -174,11 +174,34 @@ export default {
 		this.getLocation()
 	},
 	methods: {
+		// 获取当前默认选中的项目ID（多选时取第一个）
+		getDefaultSelectedProjectId() {
+			const selectedProjectIds = uni.getStorageSync('selectedProjectIds') || ''
+			if (!selectedProjectIds) return ''
+			return String(selectedProjectIds).split(',')[0] || ''
+		},
+
+		// 按本地默认项目进行回选，成功返回 true
+		applyDefaultProjectSelection() {
+			const defaultProjectId = this.getDefaultSelectedProjectId()
+			if (!defaultProjectId || !this.projectList.length) return false
+
+			const defaultIndex = this.projectList.findIndex(p => String(p.id) === String(defaultProjectId))
+			if (defaultIndex === -1) return false
+
+			this.projectIndex = defaultIndex
+			this.selectedProject = this.projectList[defaultIndex]
+			this.formData.projectId = String(this.selectedProject.id)
+			return true
+		},
+
 		// 加载项目列表
 		async loadProjectList() {
 			try {
 				const res = await api.fetchProjectList(1, 100) // 获取前100个项目
 				this.projectList = (res && res.records) || []
+				// 绑定设备时默认回选当前客户选中的项目（多选取第一个）
+				this.applyDefaultProjectSelection()
 			} catch (e) {
 				console.error('加载项目列表失败:', e)
 				uni.showToast({
@@ -234,12 +257,16 @@ export default {
 
 					// 归属项目
 					if (res.pid) {
-						this.formData.projectId = String(res.pid)
-						// 查找对应的项目并设置选中状态
-						const projectIndex = this.projectList.findIndex(p => String(p.id) === String(res.pid))
-						if (projectIndex !== -1) {
-							this.projectIndex = projectIndex
-							this.selectedProject = this.projectList[projectIndex]
+						// 优先使用当前客户默认选中的项目；若本地无默认项目，再回显接口项目
+						const appliedDefault = this.applyDefaultProjectSelection()
+						if (!appliedDefault) {
+							this.formData.projectId = String(res.pid)
+							// 查找对应的项目并设置选中状态
+							const projectIndex = this.projectList.findIndex(p => String(p.id) === String(res.pid))
+							if (projectIndex !== -1) {
+								this.projectIndex = projectIndex
+								this.selectedProject = this.projectList[projectIndex]
+							}
 						}
 					}
 

@@ -46,10 +46,12 @@
           <view class="card-header">
             <view class="header-left">
               <text class="device-name">{{ item.deviceName }}</text>
+              <text class="device-no">({{ item.deviceNo }})</text>
               <view class="tag" :class="getTagClass(item.tag)">{{ item.tag }}</view>
             </view>
             <view class="header-right">
               <text v-if="item.status === 'corrupted'" class="status-text red">● 数据损坏</text>
+              <text v-else-if="item.status === 'success'" class="status-text green">● 已上传</text>
               <text v-else class="status-text gray">● 未上传</text>
             </view>
           </view>
@@ -67,6 +69,9 @@
           <view class="card-actions">
             <template v-if="item.status === 'corrupted'">
               <view class="btn delete-btn" @click.stop="handleCorruptedDelete(index)">删除</view>
+              <view class="btn primary-btn" @click.stop="goToDetail(item)">查看详情</view>
+            </template>
+            <template v-else-if="item.status === 'success'">
               <view class="btn primary-btn" @click.stop="goToDetail(item)">查看详情</view>
             </template>
             
@@ -160,6 +165,7 @@ import {
   getAllCacheRecords, 
   deleteCacheRecord, 
   markRecordUploaded,
+  updateCacheRecord,
   getCacheStats,
   checkAndFixCorruptedRecords
 } from '@/utils/offlineCache.js'
@@ -183,7 +189,8 @@ export default {
       uploading: false,
       isOnline: true, // 网络状态
       showDetailModal: false, // 是否显示详情对话框
-      currentDetail: null // 当前详情数据
+      currentDetail: null, // 当前详情数据
+      qrDeviceInfoMap: {} // qrNo -> { deviceNo, deviceName }
     };
   },
   
@@ -198,34 +205,87 @@ export default {
     }
   },
   
-  onLoad() {
-    this.loadCacheData();
-    this.checkNetworkStatus();
+  async onLoad() {
+    await this.loadCacheData();
+    await this.checkNetworkStatus();
   },
   
-  onShow() {
+  async onShow() {
     // 页面显示时刷新数据
-    this.loadCacheData();
-    this.checkNetworkStatus();
+    await this.loadCacheData();
+    await this.checkNetworkStatus();
   },
   methods: {
+    // 是否为可用文本（排除占位值）
+    isValidDeviceText(val) {
+      const txt = (val == null ? '' : String(val)).trim();
+      if (!txt) return false;
+      if (txt === '-' || txt === '--') return false;
+      if (txt === '未知设备' || txt === '未知') return false;
+      return true;
+    },
+
+    // 通过 qrNo 查询设备信息（用于离线列表展示）
+    async fetchDeviceInfoByQrNo(qrNo) {
+      if (!qrNo) return null;
+      if (this.qrDeviceInfoMap[qrNo]) return this.qrDeviceInfoMap[qrNo];
+
+      try {
+        const detail = await http.post(API_ENDPOINTS.DEVICE_QR_DETAILS_API, { qrNo });
+        const info = {
+          deviceNo: (detail && detail.deviceNo) || '',
+          deviceName: (detail && detail.deviceName) || (detail && detail.name) || ''
+        };
+        this.qrDeviceInfoMap[qrNo] = info;
+        return info;
+      } catch (e) {
+        return null;
+      }
+    },
+
+    // 批量补齐离线记录中的设备信息（在线时）
+    async enrichDeviceInfoByQrNo(records) {
+      if (!this.isOnline || !records || records.length === 0) return records;
+
+      const enriched = await Promise.all(records.map(async (record) => {
+        // 只有设备编号/名称都无效时才查询，避免占位值阻断接口请求
+        const hasValidNo = this.isValidDeviceText(record.deviceNo);
+        const hasValidName = this.isValidDeviceText(record.deviceName);
+        if ((hasValidNo && hasValidName) || !record.qrNo) return record;
+        const deviceInfo = await this.fetchDeviceInfoByQrNo(record.qrNo);
+        if (!deviceInfo) return record;
+        return {
+          ...record,
+          deviceNo: hasValidNo ? record.deviceNo : (deviceInfo.deviceNo || ''),
+          deviceName: hasValidName ? record.deviceName : (deviceInfo.deviceName || '')
+        };
+      }));
+
+      return enriched;
+    },
+
     // 加载缓存数据
-    loadCacheData() {
+    async loadCacheData() {
+      await this.checkNetworkStatus();
       // 检查并修复损坏的记录
       checkAndFixCorruptedRecords();
       
       // 获取所有记录
-      const records = getAllCacheRecords();
+      let records = getAllCacheRecords();
+      records = await this.enrichDeviceInfoByQrNo(records);
       
       // 转换为列表数据格式
       this.listData = records
-        .filter(record => record.uploadStatus !== 'success') // 只显示未上传、失败、损坏的记录
+        .filter(record => record.uploadStatus !== 'deleted') // 保留成功记录，除非显式删除
         .map(record => ({
           id: record.id,
-          deviceName: record.deviceName || record.deviceNo || '未知设备',
+          deviceName: this.isValidDeviceText(record.deviceName) ? record.deviceName : '未知设备',
+          deviceNo: this.isValidDeviceText(record.deviceNo) ? record.deviceNo : '-',
           tag: record.tag || '未知',
           time: record.time || '',
-          status: record.uploadStatus === 'corrupted' ? 'corrupted' : 'normal',
+          status: record.uploadStatus === 'corrupted'
+            ? 'corrupted'
+            : (record.uploadStatus === 'success' ? 'success' : 'normal'),
           location: record.address || '未知地址',
           imgUrl: record.images && record.images.length > 0 ? record.images[0] : '/static/leaf.jpg',
           selected: false,
@@ -268,7 +328,7 @@ export default {
     },
     
     // 查看详情
-    goToDetail(item) {
+    async goToDetail(item) {
       // 从原始数据中提取详情信息
       const rawData = item.rawData || {};
       
@@ -282,11 +342,35 @@ export default {
           console.warn('解析缓存数据失败:', e);
         }
       }
+
+      // 详情兜底：设备编号/名称缺失时，按 qrNo 再查询一次
+      let detailQrInfo = null;
+      const fallbackQrNo = rawData.qrNo || parsedData.qrNo || '';
+      const needDeviceNo = !this.isValidDeviceText(parsedData.deviceNo) && !this.isValidDeviceText(rawData.deviceNo) && !this.isValidDeviceText(item.deviceNo);
+      const needDeviceName = !this.isValidDeviceText(parsedData.deviceName) && !this.isValidDeviceText(rawData.deviceName) && !this.isValidDeviceText(item.deviceName);
+      if (fallbackQrNo && (needDeviceNo || needDeviceName)) {
+        detailQrInfo = await this.fetchDeviceInfoByQrNo(fallbackQrNo);
+      }
       
-      // 构建详情数据，优先使用 parsedData，其次使用 rawData，最后使用 item
+      // 构建详情数据：设备信息仅接受有效值，避免 "--" 覆盖接口真实值
+      const deviceNoCandidates = [
+        parsedData.deviceNo,
+        rawData.deviceNo,
+        item.deviceNo,
+        detailQrInfo && detailQrInfo.deviceNo
+      ];
+      const deviceNameCandidates = [
+        parsedData.deviceName,
+        rawData.deviceName,
+        item.deviceName,
+        detailQrInfo && detailQrInfo.deviceName
+      ];
+      const finalDeviceNo = deviceNoCandidates.find(v => this.isValidDeviceText(v)) || '-';
+      const finalDeviceName = deviceNameCandidates.find(v => this.isValidDeviceText(v)) || '-';
+
       let detailData = {
-        deviceNo: parsedData.deviceNo || rawData.deviceNo || item.deviceName || '-',
-        deviceName: parsedData.deviceName || rawData.deviceName || item.deviceName || '-',
+        deviceNo: finalDeviceNo,
+        deviceName: finalDeviceName,
         tag: rawData.tag || item.tag || '-',
         time: parsedData.time || rawData.time || item.time || '-',
         // 位置信息：优先从 parsedData 读取，其次从 rawData 读取，最后从 item.location 读取
@@ -390,7 +474,9 @@ export default {
         return;
       }
       
-      const pendingRecords = this.listData.filter(item => item.status !== 'corrupted');
+      const pendingRecords = this.listData.filter(
+        item => item.status !== 'corrupted' && item.status !== 'success'
+      );
       if (pendingRecords.length === 0) {
         uni.showToast({
           title: '没有可上传的记录',
@@ -406,7 +492,9 @@ export default {
     async uploadSelectedItems() {
       if (this.uploading) return;
       
-      const selectedItems = this.listData.filter(item => item.selected && item.status !== 'corrupted');
+      const selectedItems = this.listData.filter(
+        item => item.selected && item.status !== 'corrupted' && item.status !== 'success'
+      );
       if (selectedItems.length === 0) {
         uni.showToast({
           title: '请选择要上传的记录',
@@ -488,6 +576,70 @@ export default {
             } catch (locErr) {
               console.error('重新获取经纬度时出错:', locErr);
               // 获取失败则继续使用原来的数据（可能没有经纬度）
+            }
+          }
+
+          // 离线上报前，用缓存的 qrNo 再做一次设备校验
+          if (rawData.type === 'attendance' && rawData.qrNo) {
+            try {
+              const qrDetails = await http.post(API_ENDPOINTS.DEVICE_QR_DETAILS_API, {
+                qrNo: rawData.qrNo
+              });
+
+              if (!qrDetails || qrDetails.status !== 1) {
+                // status === 0: 未绑定，提示并可跳转绑定页
+                if (qrDetails && qrDetails.status === 0) {
+                  const qrCodeForBind = rawData.scanRawResult || JSON.stringify({ qrNo: rawData.qrNo });
+                  uni.showModal({
+                    title: '提示',
+                    content: '该设备未绑定，是否前往绑定设备？',
+                    confirmText: '去绑定',
+                    cancelText: '取消',
+                    success: (res) => {
+                      if (res.confirm) {
+                        uni.navigateTo({
+                          url: '/pages/home/level/BindDevice?qrCode=' + encodeURIComponent(qrCodeForBind)
+                        });
+                      }
+                    }
+                  });
+                  markRecordUploaded(item.id, false, '设备未绑定');
+                } else {
+                  markRecordUploaded(item.id, false, '设备未绑定或二维码无效');
+                }
+                failedCount++;
+                continue;
+              }
+
+              // 若缓存时没拿到 deviceId，这里补齐后再提交
+              if ((!submitData.deviceId || submitData.deviceId === 0) && qrDetails.deviceId) {
+                submitData.deviceId = qrDetails.deviceId;
+              }
+              if ((!submitData.deviceNo || !this.isValidDeviceText(submitData.deviceNo)) && qrDetails.deviceNo) {
+                submitData.deviceNo = qrDetails.deviceNo;
+              }
+              if (qrDetails.deviceName && !this.isValidDeviceText(rawData.deviceName)) {
+                rawData.deviceName = qrDetails.deviceName;
+              }
+
+              // 重新上传时同步回写缓存中的设备信息，确保列表/详情立即可见
+              const nextRawData = {
+                ...rawData,
+                deviceId: submitData.deviceId || rawData.deviceId || 0,
+                deviceNo: submitData.deviceNo || rawData.deviceNo || '',
+                deviceName: rawData.deviceName || '',
+                data: JSON.stringify({
+                  ...submitData,
+                  deviceId: submitData.deviceId || 0,
+                  deviceNo: submitData.deviceNo || ''
+                })
+              };
+              updateCacheRecord(item.id, nextRawData);
+            } catch (qrErr) {
+              console.error('离线上报二维码校验失败:', qrErr);
+              markRecordUploaded(item.id, false, (qrErr && qrErr.msg) || '二维码校验失败');
+              failedCount++;
+              continue;
             }
           }
           
@@ -719,6 +871,11 @@ export default {
 .device-name {
   font-size: 32rpx;
   font-weight: bold;
+  margin-right: 15rpx;
+}
+.device-no {
+  font-size: 24rpx;
+  color: #666;
   margin-right: 15rpx;
 }
 .tag {

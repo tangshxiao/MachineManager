@@ -1,6 +1,6 @@
 // API接口配置文件
 
-const API_BASE_URL = 'https://bt.dslove.fun:10000';
+const API_BASE_URL = 'https://machine.tool.zhishanglianpin.com/app';
 
 export const API_ENDPOINTS = {
   // 项目相关接口

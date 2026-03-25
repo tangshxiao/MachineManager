@@ -115,6 +115,28 @@ export function markRecordCorrupted(id) {
 }
 
 /**
+ * 更新缓存记录字段
+ */
+export function updateCacheRecord(id, patch = {}) {
+  try {
+    const records = getAllCacheRecords()
+    const index = records.findIndex(r => r.id === id)
+    if (index === -1) {
+      return { success: false, error: '记录不存在' }
+    }
+    records[index] = {
+      ...records[index],
+      ...patch
+    }
+    uni.setStorageSync(OFFLINE_CACHE_KEY, JSON.stringify(records))
+    return { success: true }
+  } catch (e) {
+    console.error('更新缓存记录失败:', e)
+    return { success: false, error: '更新失败' }
+  }
+}
+
+/**
  * 获取统计信息
  */
 export function getCacheStats() {

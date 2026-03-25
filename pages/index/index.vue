@@ -214,7 +214,7 @@ export default {
 
 .radio-wrapper {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   margin-top: 11rpx;
   margin-bottom: 10rpx;
@@ -226,18 +226,29 @@ export default {
   font-size: 36rpx;
   color: #333;
   font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  padding-right: 20rpx;
+  line-height: 1.35;
+  word-break: break-all;
 }
 
 /* 圆形多选框 */
 .circle-checkbox {
   width: 40rpx;
+  min-width: 40rpx;
+  max-width: 40rpx;
   height: 40rpx;
+  min-height: 40rpx;
+  max-height: 40rpx;
   border-radius: 50%;
   border: 4rpx solid #D1D2D7;
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  margin-top: 8rpx;
 }
 
 /* 选中时填充颜色 */

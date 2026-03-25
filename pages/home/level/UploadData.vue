@@ -103,11 +103,13 @@ import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
 import { saveCacheRecord } from '@/utils/offlineCache.js'
 
+const HOME_DEVICE_LIST_CACHE_KEY = 'HOME_DEVICE_LIST_CACHE'
+
 export default {
 	data() {
 		return {
-			shebei: "DEVOOOO3",
-			shengchan: "生产线B设备",
+			shebei: "--",
+			shengchan: "--",
 			message: "在用",
 			checkInTypes: ["在用", "维修"],
 			enterTime: "",
@@ -119,7 +121,9 @@ export default {
 			lat: "",
 			gpsObtainTime: "", // 定位成功那一刻的时间，用于打卡上报（优先于 enterTime）
 			submitting: false,
-			qrCodeUrl: ""
+			qrCodeUrl: "",
+			qrNo: "",
+			scanRawResult: ""
 		}
 	},
 	  
@@ -139,6 +143,33 @@ export default {
 	},
 	  
 	methods: {
+		// 离线时：从首页缓存的设备列表里用 qrNo 匹配设备，回填设备编号/名称
+		getDeviceInfoFromHomeCacheByQrNo(qrNo) {
+			if (!qrNo) return null
+			try {
+				const raw = uni.getStorageSync(HOME_DEVICE_LIST_CACHE_KEY)
+				if (!raw) return null
+				const cache = typeof raw === 'string' ? JSON.parse(raw) : raw
+				const records = cache && cache.records
+				if (!Array.isArray(records) || records.length === 0) return null
+
+				for (const record of records) {
+					const qrList = record && record.qrCodeList
+					if (!Array.isArray(qrList)) continue
+					const matched = qrList.find(item => item && String(item.qrNo) === String(qrNo))
+					if (!matched) continue
+					return {
+						deviceId: record.id != null ? String(record.id) : '',
+						deviceNo: record.deviceNo || '',
+						deviceName: record.name || ''
+					}
+				}
+			} catch (e) {
+				console.warn('离线从首页缓存匹配设备失败:', e)
+			}
+			return null
+		},
+
 		// 获取当前时间并格式化
 		getEnterTime() {
 			const now = new Date()
@@ -179,9 +210,30 @@ export default {
 					uni.showToast({ title: '二维码格式错误', icon: 'none' });
 					return;
 				}
-				
+				// 记录扫码原始内容和 qrNo，供离线缓存/上报使用
+				this.scanRawResult = jsonStr;
+				this.qrNo = qrData.qrNo;
+
+				// 离线扫码打开：优先从首页缓存里反显设备信息
+				const isOnline = await this.checkNetworkStatus()
+				if (!isOnline) {
+					const cached = this.getDeviceInfoFromHomeCacheByQrNo(this.qrNo)
+					if (cached && (cached.deviceNo || cached.deviceName)) {
+						this.deviceId = cached.deviceId ? Number(cached.deviceId) : 0
+						this.shebei = cached.deviceNo || ''
+						this.shengchan = cached.deviceName || ''
+						uni.showToast({ title: '离线模式：已从缓存反显设备', icon: 'none', duration: 2500 })
+						return
+					}
+					// 缓存没有找到：继续走原来的逻辑（调用 qrDetails，catch 中做兜底缓存）
+				}
+
 				uni.showLoading({ title: '加载中...', mask: true });
-				const qrDetails = await http.post(API_ENDPOINTS.DEVICE_QR_DETAILS_API, { qrNo: qrData.qrNo });
+				const qrDetails = await http.post(
+					API_ENDPOINTS.DEVICE_QR_DETAILS_API,
+					{ qrNo: qrData.qrNo },
+					{ showLoading: false, suppressNoNetworkToast: true }
+				);
 				uni.hideLoading();
 				
 				// 判定设备绑定状态
@@ -239,10 +291,20 @@ export default {
 					uni.showToast({ title: '网络连接失败，请检查网络', icon: 'none' });
 				}
 
-				this.shebei = '';
-				this.shengchan = '';
-				this.deviceId = 0;
-				this.qrCodeUrl = '';
+				// 接口失败时保留扫码结果（qrNo），允许用户继续离线打卡
+				if (!this.qrNo) {
+					try {
+						const backupQr = JSON.parse(jsonStr || '{}');
+						this.qrNo = backupQr.qrNo || '';
+						this.scanRawResult = jsonStr || '';
+					} catch (parseErr) {
+						console.warn('保底解析扫码结果失败:', parseErr);
+					}
+				}
+				this.shebei = this.shebei || '';
+				this.shengchan = this.shengchan || '';
+				this.deviceId = this.deviceId || 0;
+				this.qrCodeUrl = this.qrCodeUrl || '';
 			}
 		},
 
@@ -402,7 +464,7 @@ export default {
 		// 提交打卡
 		async submitCheckIn() {
 			 // 表单验证
-			 if (!this.deviceId || this.deviceId === 0) {
+			 if ((!this.deviceId || this.deviceId === 0) && !this.qrNo) {
 				 uni.showToast({
 					 title: '请先扫码获取设备信息',
 					 icon: 'none'
@@ -481,6 +543,7 @@ export default {
 				 const submitData = {
 					 deviceId: this.deviceId,
 					 deviceNo: this.shebei || "", // 设备编号
+					 qrNo: this.qrNo || "",
 					 type: type, // 1在用 2维修
 					 address: this.address || "",
 					 lng: this.lng || "",
@@ -511,6 +574,49 @@ export default {
 					 return;
 				 }
 				 
+				 // 在线但未拿到 deviceId 时，先用 qrNo 再做一次设备校验
+				 if (isOnline && (!submitData.deviceId || submitData.deviceId === 0) && submitData.qrNo) {
+					 try {
+						 const detailRes = await http.post(API_ENDPOINTS.DEVICE_QR_DETAILS_API, { qrNo: submitData.qrNo });
+						 if (detailRes && detailRes.status === 1 && detailRes.deviceId) {
+							 submitData.deviceId = detailRes.deviceId;
+							 submitData.deviceNo = submitData.deviceNo || detailRes.deviceNo || '';
+						 } else {
+							 throw new Error('设备未绑定或信息不可用');
+						 }
+					 } catch (detailErr) {
+						 // 校验失败时走离线缓存，避免阻断打卡
+						 console.warn('在线校验设备失败，转离线缓存:', detailErr);
+						 const forceOffline = {
+							 type: 'attendance',
+							 deviceId: submitData.deviceId || 0,
+							 deviceNo: this.shebei || '',
+							 deviceName: this.shengchan || '',
+							 qrNo: this.qrNo || '',
+							 scanRawResult: this.scanRawResult || '',
+							 tag: this.message,
+							 time: timeStr,
+							 address: this.address || '',
+							 lng: this.lng || '',
+							 lat: this.lat || '',
+							 imgs: imgs || '',
+							 images: this.images || [],
+							 remark: '',
+							 status: 0,
+							 data: JSON.stringify(submitData)
+						 };
+						 uni.hideLoading();
+						 const forceRes = saveCacheRecord(forceOffline);
+						 if (forceRes.success) {
+							 uni.showToast({ title: '设备校验失败，已离线缓存', icon: 'none', duration: 2500 });
+							 setTimeout(() => uni.navigateBack(), 1200);
+						 } else {
+							 uni.showToast({ title: forceRes.error || '缓存失败', icon: 'none' });
+						 }
+						 return;
+					 }
+				 }
+
 				 if (!isOnline) {
 					 // 离线状态，确保已获取位置信息（GPS不依赖网络）
 					 // 如果之前获取失败，再次尝试获取GPS坐标
@@ -537,6 +643,8 @@ export default {
 						 deviceId: this.deviceId,
 						 deviceNo: this.shebei,
 						 deviceName: this.shengchan,
+						 qrNo: this.qrNo || "",
+						 scanRawResult: this.scanRawResult || "",
 						 tag: this.message, // 在用 或 维修
 						 time: timeStr,
 						 address: this.address || "", // 地址（离线时可能为空）
@@ -653,6 +761,8 @@ export default {
 						 deviceId: this.deviceId,
 						 deviceNo: this.shebei,
 						 deviceName: this.shengchan,
+						 qrNo: this.qrNo || "",
+						 scanRawResult: this.scanRawResult || "",
 						 tag: this.message, // 在用 或 维修
 						 time: errorTimeStr,
 						 address: this.address || "",
