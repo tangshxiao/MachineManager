@@ -102,6 +102,7 @@
 import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
 import { saveCacheRecord } from '@/utils/offlineCache.js'
+import { saveSuccessRecord } from '@/utils/successRecordCache.js'
 
 const HOME_DEVICE_LIST_CACHE_KEY = 'HOME_DEVICE_LIST_CACHE'
 
@@ -222,7 +223,7 @@ export default {
 						this.deviceId = cached.deviceId ? Number(cached.deviceId) : 0
 						this.shebei = cached.deviceNo || ''
 						this.shengchan = cached.deviceName || ''
-						uni.showToast({ title: '离线模式：已从缓存反显设备', icon: 'none', duration: 2500 })
+						// uni.showToast({ title: '离线模式：已从缓存反显设备', icon: 'none', duration: 2500 })
 						return
 					}
 					// 缓存没有找到：继续走原来的逻辑（调用 qrDetails，catch 中做兜底缓存）
@@ -366,6 +367,7 @@ export default {
 					type: 'gcj02', // 使用国测局坐标系（GCJ-02）
 					altitude: false, // 不需要高度信息，加快获取速度
 					geocode: false, // 禁用逆地理编码，避免依赖网络
+					highAccuracy: true,// 开启高精度（GPS 硬件）
 					timeout: 20000, // 20秒超时（离线时GPS可能需要更长时间，特别是首次定位）
 					success: (res) => {
 						// GPS定位成功，先保存经纬度（不依赖网络）
@@ -697,11 +699,28 @@ export default {
 				 
 				 // 在线状态，正常提交
 				 // 如果 code !== 0，request.js 会显示 msg 并 reject，这里会被 catch 捕获
-				 const result = await http.post(API_ENDPOINTS.ATTENDANCE_ADD_API, submitData, {
+				 await http.post(API_ENDPOINTS.ATTENDANCE_ADD_API, submitData, {
 					 header: {
 						 'Content-Type': 'application/json'
 					 }
 				 });
+
+				 // 在线打卡成功后缓存到本地，供离线查看“所有打卡记录”
+				 saveSuccessRecord({
+					 deviceId: submitData.deviceId || this.deviceId || 0,
+					 deviceNo: submitData.deviceNo || this.shebei || '',
+					 deviceName: this.shengchan || '',
+					 name: this.shengchan || '',
+					 type: submitData.type,
+					 time: submitData.time,
+					 address: submitData.address || this.address || '',
+					 lng: submitData.lng || this.lng || '',
+					 lat: submitData.lat || this.lat || '',
+					 imgs: submitData.imgs || '',
+					 localImages: this.images || [],
+					 qrNo: submitData.qrNo || this.qrNo || '',
+					 source: 'online'
+				 })
 				 
 				 uni.hideLoading();
 				 uni.showToast({

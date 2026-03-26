@@ -6,10 +6,10 @@ const NO_NETWORK_MSG = '当前无网络，请检查网络连接'
 
 // 显示无网络提示
 function showNoNetworkToast() {
-  uni.showToast({
-    title: NO_NETWORK_MSG,
-    icon: 'none'
-  })
+  // uni.showToast({
+  //   title: NO_NETWORK_MSG,
+  //   icon: 'none'
+  // })
 }
 
 // 清理登录态，避免登录失效后继续携带旧 token

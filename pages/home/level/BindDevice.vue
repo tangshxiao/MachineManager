@@ -102,7 +102,7 @@
 		<!-- 提交按钮 -->
 		<view class="submit-btn-container">
 			<button class="submit-btn" @click="handleSubmit" :disabled="submitting">
-				{{ submitting ? '绑定中...' : '绑定' }}
+				{{ submitting ? '确认中...' : '确认' }}
 			</button>
 		</view>
 	</view>
@@ -406,6 +406,7 @@ export default {
 			try {
 				uni.getLocation({
 					type: 'gcj02',
+					highAccuracy: true,// 开启高精度（GPS 硬件）
 					success: (res) => {
 						this.lng = String(res.longitude)
 						this.lat = String(res.latitude)
@@ -479,7 +480,7 @@ export default {
 
 			this.submitting = true
 			uni.showLoading({
-				title: '绑定中...',
+				title: '提交中...',
 				mask: true
 			})
 
@@ -513,7 +514,7 @@ export default {
 
 				uni.hideLoading()
 				uni.showToast({
-					title: '绑定成功',
+					title: '提交成功',
 					icon: 'success'
 				})
 

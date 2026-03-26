@@ -20,15 +20,15 @@
           <text class="info-text">{{ item.time || '-' }}</text>
         </view>
 
-        <view class="media-section" v-if="item.imgs">
+        <view class="media-section" v-if="hasAnyImages(item)">
           <view class="images-container">
             <image 
-              v-for="(img, imgIndex) in getImageList(item.imgs)" 
+              v-for="(img, imgIndex) in getImageList(item.imgs, item.localImages)" 
               :key="imgIndex"
               class="record-img" 
               :src="img" 
               mode="aspectFill"
-              @tap="previewImages(item.imgs, imgIndex)"
+              @tap="previewImages(item.imgs, item.localImages, imgIndex)"
             ></image>
           </view>
           <view class="location-box" v-if="item.address">
@@ -115,6 +115,7 @@
 <script>
 import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
+import { getSuccessRecords } from '@/utils/successRecordCache.js'
 
 export default {
   data() { 
@@ -128,7 +129,9 @@ export default {
       hasMore: true,
       loadMoreTimer: null, // 防抖定时器
       showDetailModal: false, // 是否显示详情对话框
-      currentDetail: null // 当前详情数据
+      currentDetail: null, // 当前详情数据
+      isOnline: true,
+      onlyLocalCacheMode: true // true: 仅显示本地成功缓存；false: 按网络状态走接口/缓存
     }
   },
   
@@ -173,6 +176,26 @@ export default {
       
       try {
         const nextPage = reset ? 1 : this.current + 1
+        const isOnline = this.onlyLocalCacheMode ? false : await this.checkNetworkStatus()
+        this.isOnline = isOnline
+
+        if (!isOnline) {
+          const localAll = this.getLocalSuccessRecords()
+          const start = (nextPage - 1) * this.size
+          const end = start + this.size
+          const pageRecords = localAll.slice(start, end)
+
+          if (reset) {
+            this.list = pageRecords
+          } else {
+            this.list = this.list.concat(pageRecords)
+          }
+
+          this.current = nextPage
+          this.total = localAll.length
+          this.hasMore = end < localAll.length
+          return
+        }
         
         const res = await http.post(API_ENDPOINTS.ATTENDANCE_LIST_API, {
           current: nextPage,
@@ -266,21 +289,63 @@ export default {
     },
     
     // 获取图片列表
-    getImageList(imgs) {
-      if (!imgs) return []
-      const imgArray = typeof imgs === 'string' ? imgs.split(',').map(img => img.trim()).filter(img => img) : imgs
-      return imgArray || []
+    getImageList(imgs, localImages = []) {
+      const localArr = Array.isArray(localImages) ? localImages.filter(Boolean) : []
+      if (localArr.length > 0 && (this.onlyLocalCacheMode || !this.isOnline)) {
+        return localArr
+      }
+      const imgArray = typeof imgs === 'string' ? imgs.split(',').map(img => img.trim()).filter(img => img) : (Array.isArray(imgs) ? imgs : [])
+      if (imgArray.length > 0) return imgArray
+      return localArr
     },
     
     // 预览图片
-    previewImages(imgs, currentIndex) {
-      const imgList = this.getImageList(imgs)
+    previewImages(imgs, localImages, currentIndex) {
+      const imgList = this.getImageList(imgs, localImages)
       if (imgList.length > 0) {
         uni.previewImage({
           urls: imgList,
           current: currentIndex
         })
       }
+    },
+
+    hasAnyImages(item) {
+      const list = this.getImageList(item.imgs, item.localImages)
+      return Array.isArray(list) && list.length > 0
+    },
+
+    async checkNetworkStatus() {
+      return new Promise(resolve => {
+        uni.getNetworkType({
+          success: (res) => {
+            const online = res.networkType !== 'none' && res.networkType !== 'unknown'
+            this.isOnline = online
+            resolve(online)
+          },
+          fail: () => {
+            this.isOnline = false
+            resolve(false)
+          }
+        })
+      })
+    },
+
+    getLocalSuccessRecords() {
+      const localRecords = getSuccessRecords()
+      return localRecords.map(item => ({
+        id: item.id || ('local_' + Date.now()),
+        name: item.name || item.deviceName || '设备名称',
+        deviceName: item.deviceName || item.name || '',
+        deviceNo: item.deviceNo || '-',
+        type: typeof item.type === 'number' ? item.type : 1,
+        time: item.time || '-',
+        address: item.address || '',
+        lng: item.lng || '',
+        lat: item.lat || '',
+        imgs: item.imgs || '',
+        localImages: Array.isArray(item.localImages) ? item.localImages : []
+      }))
     }
   }
 }

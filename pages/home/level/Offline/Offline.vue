@@ -171,6 +171,7 @@ import {
 } from '@/utils/offlineCache.js'
 import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
+import { saveSuccessRecord } from '@/utils/successRecordCache.js'
 
 export default {
 	
@@ -675,6 +676,22 @@ export default {
           
           // 标记为已上传
           markRecordUploaded(item.id, true);
+          saveSuccessRecord({
+            id: rawData.id || item.id,
+            deviceId: submitData.deviceId || rawData.deviceId || 0,
+            deviceNo: submitData.deviceNo || rawData.deviceNo || '',
+            deviceName: rawData.deviceName || '',
+            name: rawData.deviceName || '',
+            type: submitData.type,
+            time: submitData.time || rawData.time || '',
+            address: submitData.address || rawData.address || '',
+            lng: submitData.lng || rawData.lng || '',
+            lat: submitData.lat || rawData.lat || '',
+            imgs: submitData.imgs || rawData.imgs || '',
+            localImages: rawData.images || [],
+            qrNo: rawData.qrNo || submitData.qrNo || '',
+            source: 'offline_reupload'
+          });
           successCount++;
           
         } catch (error) {
