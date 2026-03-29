@@ -121,7 +121,7 @@
 <script>
 import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
-import { saveCacheRecord } from '@/utils/offlineCache.js'
+import { saveCacheRecordWithPersistedImages } from '@/utils/offlineCache.js'
 
 export default {
   data() {
@@ -496,6 +496,7 @@ export default {
       return new Promise((resolve, reject) => {
         uni.getLocation({
           type: 'gcj02',
+		  highAccuracy: true,// 开启高精度（GPS 硬件）
           success: (res) => {
             this.lng = String(res.longitude);
             this.lat = String(res.latitude);
@@ -631,9 +632,9 @@ export default {
             remark: this.beizhu.trim(),
             data: JSON.stringify(submitData)
           };
-          const result = saveCacheRecord(cacheData);
+          const result = await saveCacheRecordWithPersistedImages(cacheData);
           if (result.success) {
-            uni.showToast({ title: '当前无网络，数据已本地缓存', icon: 'none', duration: 3000, mask: true });
+            // uni.showToast({ title: '当前无网络，数据已本地缓存', icon: 'none', duration: 3000, mask: true });
             setTimeout(() => { uni.navigateBack(); }, 1500);
           } else {
             uni.showModal({ title: '提示', content: result.error || '缓存失败，请重试', showCancel: false, confirmText: '确定', confirmColor: '#E02020' });
@@ -677,7 +678,7 @@ export default {
               createTime: createTime
             })
           };
-          const cacheResult = saveCacheRecord(cacheData);
+          const cacheResult = await saveCacheRecordWithPersistedImages(cacheData);
           if (cacheResult.success) {
             uni.showToast({ title: '提交失败，数据已缓存', icon: 'none', duration: 3000 });
             setTimeout(() => { uni.navigateBack(); }, 1500);

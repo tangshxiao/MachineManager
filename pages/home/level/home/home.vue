@@ -128,8 +128,10 @@
 <script>
 	import http from '@/utils/request.js'
 	import API_ENDPOINTS from '@/config/api.js'
-	import { getAllCacheRecords, markRecordUploaded, getCacheStats } from '@/utils/offlineCache.js'
+	import { getAllCacheRecords, markRecordUploaded, getCacheStats, isAwaitingUpload, updateCacheRecord } from '@/utils/offlineCache.js'
 	import { saveSuccessRecord } from '@/utils/successRecordCache.js'
+	import { ensureAddressForUpload } from '@/utils/locationAddress.js'
+	import { ensureAttendanceSubmitPid } from '@/utils/attendancePid.js'
 
 	const HOME_DEVICE_LIST_CACHE_KEY = 'HOME_DEVICE_LIST_CACHE'
 	
@@ -567,7 +569,7 @@
 	  
 	  const records = getAllCacheRecords()
 	  const pendingRecords = records
-		.filter(record => record.uploadStatus === 'pending')
+		.filter(record => isAwaitingUpload(record))
 		.map(record => ({
 		  id: record.id,
 		  rawData: record
@@ -636,16 +638,46 @@
 			  // 继续提交，但不包含图片
 			}
 		  }
+
+		  // 统一补齐地址：有经纬度直接反查，没经纬度则先定位再反查
+		  try {
+			const fixedLocation = await ensureAddressForUpload({
+			  address: submitData.address || rawData.address || '',
+			  lng: submitData.lng || rawData.lng || '',
+			  lat: submitData.lat || rawData.lat || '',
+			  needLocateWhenMissing: rawData.type === 'attendance'
+			})
+			submitData.address = submitData.address || fixedLocation.address || ''
+			submitData.lng = submitData.lng || fixedLocation.lng || ''
+			submitData.lat = submitData.lat || fixedLocation.lat || ''
+		  } catch (geoErr) {
+			console.warn('离线上报位置补齐失败:', geoErr)
+		  }
+
+		  ensureAttendanceSubmitPid(submitData, rawData)
 		  
 		  // 提交数据
+		  // 离线缓存重新上报时，attendance/add 约定 status=1
+		  submitData.status = 1
 		  await http.post(API_ENDPOINTS.ATTENDANCE_ADD_API, submitData, {
 			header: {
 			  'Content-Type': 'application/json'
 			}
 		  })
 		  
-		  // 标记为已上传
+		  // 标记为已上传，并回写根级地址等，与离线列表展示一致
 		  markRecordUploaded(item.id, true)
+		  updateCacheRecord(item.id, {
+			address: submitData.address || rawData.address || '',
+			lng: submitData.lng || rawData.lng || '',
+			lat: submitData.lat || rawData.lat || '',
+			imgs: submitData.imgs || rawData.imgs || '',
+			data: JSON.stringify(submitData),
+			pid: submitData.pid,
+			deviceId: submitData.deviceId || rawData.deviceId,
+			deviceNo: submitData.deviceNo || rawData.deviceNo || '',
+			deviceName: rawData.deviceName || submitData.deviceName || ''
+		  })
 		  saveSuccessRecord({
 			id: rawData.id || item.id,
 			deviceId: submitData.deviceId || rawData.deviceId || 0,

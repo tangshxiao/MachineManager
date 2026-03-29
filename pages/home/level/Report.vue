@@ -131,7 +131,7 @@
 <script>
 import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
-import { saveCacheRecord } from '@/utils/offlineCache.js'
+import { saveCacheRecordWithPersistedImages } from '@/utils/offlineCache.js'
 
 	//模拟设备编号
 const validDevices = ["DEV001", "DEV002", "DEV003"];
@@ -712,7 +712,7 @@ export default {
 				data: JSON.stringify(submitData)
 			};
 			
-			const result = saveCacheRecord(cacheData);
+			const result = await saveCacheRecordWithPersistedImages(cacheData);
 			
 			if (result.success) {
 				// 显示黄色提示
@@ -793,7 +793,7 @@ export default {
 				})
 			};
 			
-			const cacheResult = saveCacheRecord(cacheData);
+			const cacheResult = await saveCacheRecordWithPersistedImages(cacheData);
 			if (cacheResult.success) {
 				uni.showToast({
 					title: '提交失败，数据已缓存',

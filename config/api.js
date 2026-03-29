@@ -2,6 +2,15 @@
 
 const API_BASE_URL = 'https://machine.tool.zhishanglianpin.com/app';
 
+/** 接口域名，用于拼接后端返回的相对路径图片地址 */
+export function getApiOrigin() {
+  try {
+    return new URL(API_BASE_URL).origin
+  } catch (e) {
+    return ''
+  }
+}
+
 export const API_ENDPOINTS = {
   // 项目相关接口
   LOGIN_API: `${API_BASE_URL}/user/login`,

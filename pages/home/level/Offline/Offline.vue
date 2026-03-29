@@ -58,11 +58,20 @@
           
           <view class="time-text">{{ item.time }}</view>
 
-          <view class="card-body">
-            <image :src="item.imgUrl" mode="aspectFill" class="thumb-img"></image>
-            <view class="location-info">
+          <view class="media-section" v-if="hasAnyImages(item)">
+            <view class="images-container">
+              <image
+                v-for="(img, imgIndex) in getImageList(item.images)"
+                :key="imgIndex"
+                class="record-img"
+                :src="img"
+                mode="aspectFill"
+                @tap="previewListImages(item.images, imgIndex)"
+              ></image>
+            </view>
+            <view class="location-box" v-if="item.location">
               <text class="iconfont-location-icon">&#xe847;</text>
-              <text>{{ item.location }}</text>
+              <text class="loc-text">{{ item.location }}</text>
             </view>
           </view>
 
@@ -136,11 +145,11 @@
             <text class="detail-value">{{ getGpsCoordinate(currentDetail.lng, currentDetail.lat) }}</text>
           </view>
           
-          <view class="detail-item" v-if="currentDetail.images && currentDetail.images.length > 0">
+          <view class="detail-item" v-if="getImageList(currentDetail.images).length > 0">
             <text class="detail-label">图片</text>
             <view class="detail-images">
               <image 
-                v-for="(img, imgIndex) in currentDetail.images" 
+                v-for="(img, imgIndex) in getImageList(currentDetail.images)" 
                 :key="imgIndex"
                 class="detail-img" 
                 :src="img" 
@@ -167,11 +176,16 @@ import {
   markRecordUploaded,
   updateCacheRecord,
   getCacheStats,
-  checkAndFixCorruptedRecords
+  checkAndFixCorruptedRecords,
+  getCachedRecordAddress
 } from '@/utils/offlineCache.js'
 import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
 import { saveSuccessRecord } from '@/utils/successRecordCache.js'
+import { ensureAddressForUpload } from '@/utils/locationAddress.js'
+import { ensureAttendanceSubmitPid } from '@/utils/attendancePid.js'
+import { normalizeDisplayImgUrl } from '@/utils/displayImageUrl.js'
+import { mergeImagesLikeOfflineRecord } from '@/utils/mergeOfflineImages.js'
 
 export default {
 	
@@ -278,20 +292,24 @@ export default {
       // 转换为列表数据格式
       this.listData = records
         .filter(record => record.uploadStatus !== 'deleted') // 保留成功记录，除非显式删除
-        .map(record => ({
-          id: record.id,
-          deviceName: this.isValidDeviceText(record.deviceName) ? record.deviceName : '未知设备',
-          deviceNo: this.isValidDeviceText(record.deviceNo) ? record.deviceNo : '-',
-          tag: record.tag || '未知',
-          time: record.time || '',
-          status: record.uploadStatus === 'corrupted'
-            ? 'corrupted'
-            : (record.uploadStatus === 'success' ? 'success' : 'normal'),
-          location: record.address || '未知地址',
-          imgUrl: record.images && record.images.length > 0 ? record.images[0] : '/static/leaf.jpg',
-          selected: false,
-          rawData: record // 保存原始数据用于上传
-        }));
+        .map(record => {
+          const mergedImages = mergeImagesLikeOfflineRecord(record)
+          return {
+            id: record.id,
+            deviceName: this.isValidDeviceText(record.deviceName) ? record.deviceName : '未知设备',
+            deviceNo: this.isValidDeviceText(record.deviceNo) ? record.deviceNo : '-',
+            tag: record.tag || '未知',
+            time: record.time || '',
+            status: record.uploadStatus === 'corrupted'
+              ? 'corrupted'
+              : (record.uploadStatus === 'success' ? 'success' : 'normal'),
+            location: getCachedRecordAddress(record) || '未知地址',
+            images: mergedImages,
+            imgUrl: mergedImages.length > 0 ? mergedImages[0] : '/static/leaf.jpg',
+            selected: false,
+            rawData: record // 保存原始数据用于上传
+          }
+        });
       
       // 更新统计数据
       this.stats = getCacheStats();
@@ -379,7 +397,15 @@ export default {
         // GPS坐标：优先从 parsedData 读取，其次从 rawData 读取
         lng: parsedData.lng || rawData.lng || '',
         lat: parsedData.lat || rawData.lat || '',
-        images: rawData.images || (item.imgUrl ? [item.imgUrl] : [])
+        images: (() => {
+          if (item.images && item.images.length > 0) return item.images;
+          if (rawData.images && rawData.images.length > 0) return rawData.images;
+          const ims = parsedData.imgs || rawData.imgs || '';
+          if (typeof ims === 'string' && ims.trim()) {
+            return ims.split(',').map((s) => s.trim()).filter(Boolean);
+          }
+          return item.imgUrl ? [item.imgUrl] : [];
+        })()
       };
       
       // 调试信息：打印实际读取到的位置和坐标
@@ -412,13 +438,37 @@ export default {
       }
       return '-';
     },
+
+    getImageList(images) {
+      let list = [];
+      if (Array.isArray(images)) list = images.filter(Boolean);
+      else if (typeof images === 'string') {
+        list = images.split(',').map((img) => img.trim()).filter(Boolean);
+      }
+      return list.map((u) => normalizeDisplayImgUrl(u));
+    },
+
+    hasAnyImages(item) {
+      return this.getImageList(item.images).length > 0;
+    },
+
+    previewListImages(images, currentIndex) {
+      const imgList = this.getImageList(images);
+      if (imgList.length > 0) {
+        uni.previewImage({
+          urls: imgList,
+          current: imgList[currentIndex] || imgList[0]
+        });
+      }
+    },
     
     // 预览详情图片
     previewDetailImages(currentIndex) {
-      if (this.currentDetail && this.currentDetail.images && this.currentDetail.images.length > 0) {
+      const imgList = this.currentDetail ? this.getImageList(this.currentDetail.images) : [];
+      if (imgList.length > 0) {
         uni.previewImage({
-          urls: this.currentDetail.images,
-          current: this.currentDetail.images[currentIndex]
+          urls: imgList,
+          current: imgList[currentIndex] || imgList[0]
         });
       }
     },
@@ -516,26 +566,6 @@ export default {
       await this.uploadRecords(selectedItems);
     },
     
-    // 离线上报时获取经纬度（仅在缓存中没有经纬度时调用）
-    async getLocationForUpload() {
-      return new Promise((resolve) => {
-        uni.getLocation({
-          type: 'gcj02',
-          timeout: 20000,
-          success: (res) => {
-            const lng = res.longitude != null ? String(res.longitude) : '';
-            const lat = res.latitude != null ? String(res.latitude) : '';
-            console.log('离线上报重新获取到经纬度:', { lng, lat });
-            resolve({ lng, lat });
-          },
-          fail: (err) => {
-            console.error('离线上报获取经纬度失败:', err);
-            resolve({ lng: '', lat: '' });
-          }
-        });
-      });
-    },
-    
     // 上传记录（核心上传逻辑）
     async uploadRecords(records) {
       this.uploading = true;
@@ -566,19 +596,22 @@ export default {
             continue;
           }
           
-          // 如果缓存的数据中没有经纬度，上报前再重新获取一次经纬度
-          if ((!submitData.lng || !submitData.lat) && rawData.type === 'attendance') {
-            try {
-              const { lng, lat } = await this.getLocationForUpload();
-              if (lng && lat) {
-                submitData.lng = submitData.lng || lng;
-                submitData.lat = submitData.lat || lat;
-              }
-            } catch (locErr) {
-              console.error('重新获取经纬度时出错:', locErr);
-              // 获取失败则继续使用原来的数据（可能没有经纬度）
-            }
+          // 统一补齐地址：有经纬度直接反查，没经纬度则先定位再反查
+          try {
+            const fixedLocation = await ensureAddressForUpload({
+              address: submitData.address || rawData.address || '',
+              lng: submitData.lng || rawData.lng || '',
+              lat: submitData.lat || rawData.lat || '',
+              needLocateWhenMissing: rawData.type === 'attendance'
+            });
+            submitData.address = submitData.address || fixedLocation.address || '';
+            submitData.lng = submitData.lng || fixedLocation.lng || '';
+            submitData.lat = submitData.lat || fixedLocation.lat || '';
+          } catch (geoErr) {
+            console.warn('离线上报位置补齐失败:', geoErr);
           }
+
+          ensureAttendanceSubmitPid(submitData, rawData);
 
           // 离线上报前，用缓存的 qrNo 再做一次设备校验
           if (rawData.type === 'attendance' && rawData.qrNo) {
@@ -629,6 +662,10 @@ export default {
                 deviceId: submitData.deviceId || rawData.deviceId || 0,
                 deviceNo: submitData.deviceNo || rawData.deviceNo || '',
                 deviceName: rawData.deviceName || '',
+                pid: submitData.pid,
+                address: submitData.address || rawData.address || '',
+                lng: submitData.lng || rawData.lng || '',
+                lat: submitData.lat || rawData.lat || '',
                 data: JSON.stringify({
                   ...submitData,
                   deviceId: submitData.deviceId || 0,
@@ -668,14 +705,27 @@ export default {
           }
           
           // 提交数据
+          // 离线缓存重新上报时，attendance/add 约定 status=1
+          submitData.status = 1;
           await http.post(API_ENDPOINTS.ATTENDANCE_ADD_API, submitData, {
             header: {
               'Content-Type': 'application/json'
             }
           });
           
-          // 标记为已上传
+          // 标记为已上传，并回写根级地址/经纬度，避免列表只认 record.address 而详情读 data JSON 不一致
           markRecordUploaded(item.id, true);
+          updateCacheRecord(item.id, {
+            address: submitData.address || rawData.address || '',
+            lng: submitData.lng || rawData.lng || '',
+            lat: submitData.lat || rawData.lat || '',
+            imgs: submitData.imgs || rawData.imgs || '',
+            data: JSON.stringify(submitData),
+            pid: submitData.pid,
+            deviceId: submitData.deviceId || rawData.deviceId,
+            deviceNo: submitData.deviceNo || rawData.deviceNo || '',
+            deviceName: rawData.deviceName || submitData.deviceName || ''
+          });
           saveSuccessRecord({
             id: rawData.id || item.id,
             deviceId: submitData.deviceId || rawData.deviceId || 0,
@@ -916,30 +966,43 @@ export default {
   margin-bottom: 20rpx;
 }
 
-.card-body {
-  position: relative;
+.media-section {
+  margin-top: 20rpx;
   margin-bottom: 20rpx;
 }
 
-.iconfont-location-icon{
-	font-family: 'iconfont';
+.images-container {
+  display: flex;
+  flex-wrap: wrap;
+  margin-right: -12rpx;
+  margin-bottom: 12rpx;
 }
-.thumb-img {
-  width: 140rpx;
-  height: 140rpx;
+
+.record-img {
+  width: calc(33.333% - 12rpx);
+  height: 220rpx;
   border-radius: 12rpx;
-  background: #eee;
+  background-color: #eee;
+  margin-right: 12rpx;
+  margin-bottom: 12rpx;
 }
-.location-info {
-  position: absolute;
-  right: 0;
-  bottom: 10rpx;
-  font-size: 24rpx;
-  color: #666;
+
+.location-box {
   display: flex;
   align-items: center;
 }
-.location-icon { margin-right: 6rpx; }
+
+.iconfont-location-icon {
+  font-family: 'iconfont';
+  margin-right: 6rpx;
+  color: #666;
+}
+
+.loc-text {
+  font-size: 24rpx;
+  color: #666;
+  word-break: break-all;
+}
 
 /* 按钮组 */
 .card-actions {
@@ -1136,13 +1199,13 @@ export default {
 .detail-images {
   display: flex;
   flex-wrap: wrap;
-  gap: 20rpx;
+  gap: 12rpx;
   margin-top: 10rpx;
 }
 
 .detail-img {
-  width: 200rpx;
-  height: 200rpx;
+  width: calc((100% - 24rpx) / 3);
+  height: 180rpx;
   border-radius: 12rpx;
   background: #f5f5f5;
 }

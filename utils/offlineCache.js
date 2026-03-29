@@ -1,4 +1,6 @@
 // 离线缓存管理工具
+import { withPersistedLocalImages } from './persistLocalImages.js'
+
 const OFFLINE_CACHE_KEY = 'OFFLINE_CACHE_RECORDS'
 const MAX_CACHE_SIZE = 50 // 最大缓存条数
 
@@ -57,6 +59,14 @@ export function saveCacheRecord(record) {
     }
     return { success: false, error: '保存缓存失败' }
   }
+}
+
+/**
+ * 先将 record.images 中的临时文件转为持久路径再写入缓存（避免系统清理临时目录后无法预览）
+ */
+export async function saveCacheRecordWithPersistedImages(record) {
+  const prepared = await withPersistedLocalImages(record)
+  return saveCacheRecord(prepared)
 }
 
 /**
@@ -137,13 +147,43 @@ export function updateCacheRecord(id, patch = {}) {
 }
 
 /**
- * 获取统计信息
+ * 是否仍需上传：待上传、上传失败需重试、旧缓存无 uploadStatus
+ * （与离线列表里「非已上传、非损坏」一致，避免统计与列表条数对不上）
+ */
+export function isAwaitingUpload(record) {
+  if (!record || record.uploadStatus === 'deleted') return false
+  const s = record.uploadStatus
+  if (s === 'success' || s === 'corrupted') return false
+  return true
+}
+
+/**
+ * 列表/卡片展示用地址：根字段优先，否则从 data JSON 解析（与详情弹窗一致）
+ */
+export function getCachedRecordAddress(record) {
+  if (!record) return ''
+  const root = record.address
+  if (root != null && String(root).trim()) return String(root).trim()
+  if (record.data && typeof record.data === 'string') {
+    try {
+      const d = JSON.parse(record.data)
+      const a = d && d.address
+      if (a != null && String(a).trim()) return String(a).trim()
+    } catch (e) {
+      /* ignore */
+    }
+  }
+  return ''
+}
+
+/**
+ * 获取统计信息（total = 未上传 + 已上传 + 损坏，不含已标记 deleted 的占位）
  */
 export function getCacheStats() {
-  const records = getAllCacheRecords()
+  const records = getAllCacheRecords().filter(r => r.uploadStatus !== 'deleted')
   return {
     total: records.length,
-    pending: records.filter(r => r.uploadStatus === 'pending').length,
+    pending: records.filter(r => isAwaitingUpload(r)).length,
     success: records.filter(r => r.uploadStatus === 'success').length,
     failed: records.filter(r => r.uploadStatus === 'failed').length,
     corrupted: records.filter(r => r.uploadStatus === 'corrupted').length

@@ -101,8 +101,9 @@
 <script>
 import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
-import { saveCacheRecord } from '@/utils/offlineCache.js'
+import { saveCacheRecordWithPersistedImages } from '@/utils/offlineCache.js'
 import { saveSuccessRecord } from '@/utils/successRecordCache.js'
+import { getSelectedProjectIdForApi } from '@/utils/attendancePid.js'
 
 const HOME_DEVICE_LIST_CACHE_KEY = 'HOME_DEVICE_LIST_CACHE'
 
@@ -547,6 +548,7 @@ export default {
 					 deviceNo: this.shebei || "", // 设备编号
 					 qrNo: this.qrNo || "",
 					 type: type, // 1在用 2维修
+					 pid: getSelectedProjectIdForApi(),
 					 address: this.address || "",
 					 lng: this.lng || "",
 					 lat: this.lat || "",
@@ -598,6 +600,7 @@ export default {
 							 scanRawResult: this.scanRawResult || '',
 							 tag: this.message,
 							 time: timeStr,
+							 pid: submitData.pid,
 							 address: this.address || '',
 							 lng: this.lng || '',
 							 lat: this.lat || '',
@@ -608,7 +611,7 @@ export default {
 							 data: JSON.stringify(submitData)
 						 };
 						 uni.hideLoading();
-						 const forceRes = saveCacheRecord(forceOffline);
+						 const forceRes = await saveCacheRecordWithPersistedImages(forceOffline);
 						 if (forceRes.success) {
 							 uni.showToast({ title: '设备校验失败，已离线缓存', icon: 'none', duration: 2500 });
 							 setTimeout(() => uni.navigateBack(), 1200);
@@ -649,6 +652,7 @@ export default {
 						 scanRawResult: this.scanRawResult || "",
 						 tag: this.message, // 在用 或 维修
 						 time: timeStr,
+						 pid: submitData.pid,
 						 address: this.address || "", // 地址（离线时可能为空）
 						 lng: this.lng || "", // 确保包含经纬度（GPS坐标，离线时应该能获取）
 						 lat: this.lat || "", // 确保包含经纬度（GPS坐标，离线时应该能获取）
@@ -669,7 +673,7 @@ export default {
 						 submitDataLat: submitData.lat
 					 });
 					 
-					 const result = saveCacheRecord(cacheData);
+					 const result = await saveCacheRecordWithPersistedImages(cacheData);
 					 
 					 if (result.success) {
 						 // 显示黄色提示
@@ -766,6 +770,7 @@ export default {
 						 deviceId: this.deviceId,
 						 deviceNo: this.shebei || "",
 						 type: this.message === "在用" ? 1 : 2, // 1在用 2维修
+						 pid: getSelectedProjectIdForApi(),
 						 address: this.address || "",
 						 lng: this.lng || "", // 确保包含经纬度
 						 lat: this.lat || "", // 确保包含经纬度
@@ -784,6 +789,7 @@ export default {
 						 scanRawResult: this.scanRawResult || "",
 						 tag: this.message, // 在用 或 维修
 						 time: errorTimeStr,
+						 pid: errorSubmitData.pid,
 						 address: this.address || "",
 						 lng: this.lng || "", // 确保包含经纬度
 						 lat: this.lat || "", // 确保包含经纬度
@@ -794,7 +800,7 @@ export default {
 						 data: JSON.stringify(errorSubmitData) // 保存完整提交数据（包含经纬度）
 					 };
 					 
-					 const cacheResult = saveCacheRecord(cacheData);
+					 const cacheResult = await saveCacheRecordWithPersistedImages(cacheData);
 					 if (cacheResult.success) {
 						 uni.showToast({
 							 title: '提交失败，数据已缓存',

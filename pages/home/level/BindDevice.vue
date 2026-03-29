@@ -270,22 +270,18 @@ export default {
 						}
 					}
 
-					// 设备状态：0进场 1在用 2维修 3退场
-					// 映射到表单的"进场"/"退场"
-					if (res.deviceStatus !== undefined && res.deviceStatus !== null) {
-						if (res.deviceStatus === 0) {
-							// 进场
-							this.formData.status = '进场'
-							this.statusIndex = 0
-						} else if (res.deviceStatus === 3) {
-							// 退场
-							this.formData.status = '退场'
-							this.statusIndex = 1
-						} else {
-							// 其他状态（在用、维修）默认显示为进场
-							this.formData.status = '进场'
-							this.statusIndex = 0
-						}
+					// 扫码后默认当前状态：未反显到设备编号/名称/归属公司等信息 → 进场；已查到设备信息 → 退场
+					const hasDeviceInfo =
+						(res.deviceId != null && res.deviceId !== '' && Number(res.deviceId) !== 0) ||
+						!!(res.deviceNo && String(res.deviceNo).trim()) ||
+						!!(res.deviceName && String(res.deviceName).trim()) ||
+						!!(res.companyName && String(res.companyName).trim())
+					if (hasDeviceInfo) {
+						this.formData.status = '退场'
+						this.statusIndex = 1
+					} else {
+						this.formData.status = '进场'
+						this.statusIndex = 0
 					}
 				}
 
@@ -451,6 +447,14 @@ export default {
 				return false
 			}
 
+			if (!this.deviceId) {
+				uni.showToast({
+					title: '请先选择有效设备',
+					icon: 'none'
+				})
+				return false
+			}
+
 			if (!this.formData.projectId) {
 				uni.showToast({
 					title: '请选择归属项目',
@@ -495,6 +499,7 @@ export default {
 
 				const submitData = {
 					qrNo: this.qrNo, // 二维码编号
+					deviceId: Number(this.deviceId), // 设备ID（根据选择设备回填）
 					deviceNo: this.formData.deviceNo.trim(), // 设备编号
 					pid: Number(this.formData.projectId), // 归属项目ID（转换为整数）
 					address: this.address || '', // 地址
