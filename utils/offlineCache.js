@@ -158,6 +158,19 @@ export function isAwaitingUpload(record) {
 }
 
 /**
+ * 获取可参与上传的缓存记录（默认过滤无效脏数据，避免首页提示“有缓存”但实际不可上传）
+ */
+export function getAwaitingUploadRecords(options = {}) {
+  const { validOnly = true } = options
+  const records = getAllCacheRecords().filter(r => r && r.uploadStatus !== 'deleted')
+  return records.filter((r) => {
+    if (!isAwaitingUpload(r)) return false
+    if (!validOnly) return true
+    return validateRecord(r).valid
+  })
+}
+
+/**
  * 列表/卡片展示用地址：根字段优先，否则从 data JSON 解析（与详情弹窗一致）
  */
 export function getCachedRecordAddress(record) {
@@ -181,9 +194,10 @@ export function getCachedRecordAddress(record) {
  */
 export function getCacheStats() {
   const records = getAllCacheRecords().filter(r => r.uploadStatus !== 'deleted')
+  const awaiting = getAwaitingUploadRecords({ validOnly: true })
   return {
     total: records.length,
-    pending: records.filter(r => isAwaitingUpload(r)).length,
+    pending: awaiting.length,
     success: records.filter(r => r.uploadStatus === 'success').length,
     failed: records.filter(r => r.uploadStatus === 'failed').length,
     corrupted: records.filter(r => r.uploadStatus === 'corrupted').length

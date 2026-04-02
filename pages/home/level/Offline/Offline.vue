@@ -58,20 +58,11 @@
           
           <view class="time-text">{{ item.time }}</view>
 
-          <view class="media-section" v-if="hasAnyImages(item)">
-            <view class="images-container">
-              <image
-                v-for="(img, imgIndex) in getImageList(item.images)"
-                :key="imgIndex"
-                class="record-img"
-                :src="img"
-                mode="aspectFill"
-                @tap="previewListImages(item.images, imgIndex)"
-              ></image>
-            </view>
-            <view class="location-box" v-if="item.location">
+          <view class="card-body">
+            <image :src="item.imgUrl" mode="aspectFill" class="thumb-img"></image>
+            <view class="location-info">
               <text class="iconfont-location-icon">&#xe847;</text>
-              <text class="loc-text">{{ item.location }}</text>
+              <text>{{ item.location }}</text>
             </view>
           </view>
 
@@ -145,11 +136,11 @@
             <text class="detail-value">{{ getGpsCoordinate(currentDetail.lng, currentDetail.lat) }}</text>
           </view>
           
-          <view class="detail-item" v-if="getImageList(currentDetail.images).length > 0">
+          <view class="detail-item" v-if="currentDetail.images && currentDetail.images.length > 0">
             <text class="detail-label">图片</text>
             <view class="detail-images">
               <image 
-                v-for="(img, imgIndex) in getImageList(currentDetail.images)" 
+                v-for="(img, imgIndex) in currentDetail.images" 
                 :key="imgIndex"
                 class="detail-img" 
                 :src="img" 
@@ -183,9 +174,6 @@ import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
 import { saveSuccessRecord } from '@/utils/successRecordCache.js'
 import { ensureAddressForUpload } from '@/utils/locationAddress.js'
-import { ensureAttendanceSubmitPid } from '@/utils/attendancePid.js'
-import { normalizeDisplayImgUrl } from '@/utils/displayImageUrl.js'
-import { mergeImagesLikeOfflineRecord } from '@/utils/mergeOfflineImages.js'
 
 export default {
 	
@@ -292,24 +280,20 @@ export default {
       // 转换为列表数据格式
       this.listData = records
         .filter(record => record.uploadStatus !== 'deleted') // 保留成功记录，除非显式删除
-        .map(record => {
-          const mergedImages = mergeImagesLikeOfflineRecord(record)
-          return {
-            id: record.id,
-            deviceName: this.isValidDeviceText(record.deviceName) ? record.deviceName : '未知设备',
-            deviceNo: this.isValidDeviceText(record.deviceNo) ? record.deviceNo : '-',
-            tag: record.tag || '未知',
-            time: record.time || '',
-            status: record.uploadStatus === 'corrupted'
-              ? 'corrupted'
-              : (record.uploadStatus === 'success' ? 'success' : 'normal'),
-            location: getCachedRecordAddress(record) || '未知地址',
-            images: mergedImages,
-            imgUrl: mergedImages.length > 0 ? mergedImages[0] : '/static/leaf.jpg',
-            selected: false,
-            rawData: record // 保存原始数据用于上传
-          }
-        });
+        .map(record => ({
+          id: record.id,
+          deviceName: this.isValidDeviceText(record.deviceName) ? record.deviceName : '未知设备',
+          deviceNo: this.isValidDeviceText(record.deviceNo) ? record.deviceNo : '-',
+          tag: record.tag || '未知',
+          time: record.time || '',
+          status: record.uploadStatus === 'corrupted'
+            ? 'corrupted'
+            : (record.uploadStatus === 'success' ? 'success' : 'normal'),
+          location: getCachedRecordAddress(record) || '未知地址',
+          imgUrl: record.images && record.images.length > 0 ? record.images[0] : '/static/leaf.jpg',
+          selected: false,
+          rawData: record // 保存原始数据用于上传
+        }));
       
       // 更新统计数据
       this.stats = getCacheStats();
@@ -397,15 +381,7 @@ export default {
         // GPS坐标：优先从 parsedData 读取，其次从 rawData 读取
         lng: parsedData.lng || rawData.lng || '',
         lat: parsedData.lat || rawData.lat || '',
-        images: (() => {
-          if (item.images && item.images.length > 0) return item.images;
-          if (rawData.images && rawData.images.length > 0) return rawData.images;
-          const ims = parsedData.imgs || rawData.imgs || '';
-          if (typeof ims === 'string' && ims.trim()) {
-            return ims.split(',').map((s) => s.trim()).filter(Boolean);
-          }
-          return item.imgUrl ? [item.imgUrl] : [];
-        })()
+        images: rawData.images || (item.imgUrl ? [item.imgUrl] : [])
       };
       
       // 调试信息：打印实际读取到的位置和坐标
@@ -438,37 +414,13 @@ export default {
       }
       return '-';
     },
-
-    getImageList(images) {
-      let list = [];
-      if (Array.isArray(images)) list = images.filter(Boolean);
-      else if (typeof images === 'string') {
-        list = images.split(',').map((img) => img.trim()).filter(Boolean);
-      }
-      return list.map((u) => normalizeDisplayImgUrl(u));
-    },
-
-    hasAnyImages(item) {
-      return this.getImageList(item.images).length > 0;
-    },
-
-    previewListImages(images, currentIndex) {
-      const imgList = this.getImageList(images);
-      if (imgList.length > 0) {
-        uni.previewImage({
-          urls: imgList,
-          current: imgList[currentIndex] || imgList[0]
-        });
-      }
-    },
     
     // 预览详情图片
     previewDetailImages(currentIndex) {
-      const imgList = this.currentDetail ? this.getImageList(this.currentDetail.images) : [];
-      if (imgList.length > 0) {
+      if (this.currentDetail && this.currentDetail.images && this.currentDetail.images.length > 0) {
         uni.previewImage({
-          urls: imgList,
-          current: imgList[currentIndex] || imgList[0]
+          urls: this.currentDetail.images,
+          current: this.currentDetail.images[currentIndex]
         });
       }
     },
@@ -596,7 +548,7 @@ export default {
             continue;
           }
           
-          // 统一补齐地址：有经纬度直接反查，没经纬度则先定位再反查
+          // 统一补齐地址：有经纬度就逆地理，无经纬度（attendance）先定位再逆地理
           try {
             const fixedLocation = await ensureAddressForUpload({
               address: submitData.address || rawData.address || '',
@@ -604,14 +556,18 @@ export default {
               lat: submitData.lat || rawData.lat || '',
               needLocateWhenMissing: rawData.type === 'attendance'
             });
-            submitData.address = submitData.address || fixedLocation.address || '';
             submitData.lng = submitData.lng || fixedLocation.lng || '';
             submitData.lat = submitData.lat || fixedLocation.lat || '';
+            submitData.address = submitData.address || fixedLocation.address || '';
+            // 业务要求：有经纬度就必须有反地理地址
+            if (!submitData.address && submitData.lng && submitData.lat) {
+              markRecordUploaded(item.id, false, '反地理编码失败，请稍后重试');
+              failedCount++;
+              continue;
+            }
           } catch (geoErr) {
             console.warn('离线上报位置补齐失败:', geoErr);
           }
-
-          ensureAttendanceSubmitPid(submitData, rawData);
 
           // 离线上报前，用缓存的 qrNo 再做一次设备校验
           if (rawData.type === 'attendance' && rawData.qrNo) {
@@ -662,10 +618,6 @@ export default {
                 deviceId: submitData.deviceId || rawData.deviceId || 0,
                 deviceNo: submitData.deviceNo || rawData.deviceNo || '',
                 deviceName: rawData.deviceName || '',
-                pid: submitData.pid,
-                address: submitData.address || rawData.address || '',
-                lng: submitData.lng || rawData.lng || '',
-                lat: submitData.lat || rawData.lat || '',
                 data: JSON.stringify({
                   ...submitData,
                   deviceId: submitData.deviceId || 0,
@@ -705,26 +657,20 @@ export default {
           }
           
           // 提交数据
-          // 离线缓存重新上报时，attendance/add 约定 status=1
-          submitData.status = 1;
           await http.post(API_ENDPOINTS.ATTENDANCE_ADD_API, submitData, {
             header: {
               'Content-Type': 'application/json'
             }
           });
           
-          // 标记为已上传，并回写根级地址/经纬度，避免列表只认 record.address 而详情读 data JSON 不一致
+          // 标记为已上传
           markRecordUploaded(item.id, true);
+          // 回写根级地址/经纬度，确保离线列表可直接展示最新地址
           updateCacheRecord(item.id, {
             address: submitData.address || rawData.address || '',
             lng: submitData.lng || rawData.lng || '',
             lat: submitData.lat || rawData.lat || '',
-            imgs: submitData.imgs || rawData.imgs || '',
-            data: JSON.stringify(submitData),
-            pid: submitData.pid,
-            deviceId: submitData.deviceId || rawData.deviceId,
-            deviceNo: submitData.deviceNo || rawData.deviceNo || '',
-            deviceName: rawData.deviceName || submitData.deviceName || ''
+            data: JSON.stringify(submitData)
           });
           saveSuccessRecord({
             id: rawData.id || item.id,
@@ -738,7 +684,6 @@ export default {
             lng: submitData.lng || rawData.lng || '',
             lat: submitData.lat || rawData.lat || '',
             imgs: submitData.imgs || rawData.imgs || '',
-            localImages: rawData.images || [],
             qrNo: rawData.qrNo || submitData.qrNo || '',
             source: 'offline_reupload'
           });
@@ -966,43 +911,30 @@ export default {
   margin-bottom: 20rpx;
 }
 
-.media-section {
-  margin-top: 20rpx;
+.card-body {
+  position: relative;
   margin-bottom: 20rpx;
 }
 
-.images-container {
-  display: flex;
-  flex-wrap: wrap;
-  margin-right: -12rpx;
-  margin-bottom: 12rpx;
+.iconfont-location-icon{
+	font-family: 'iconfont';
 }
-
-.record-img {
-  width: calc(33.333% - 12rpx);
-  height: 220rpx;
+.thumb-img {
+  width: 140rpx;
+  height: 140rpx;
   border-radius: 12rpx;
-  background-color: #eee;
-  margin-right: 12rpx;
-  margin-bottom: 12rpx;
+  background: #eee;
 }
-
-.location-box {
+.location-info {
+  position: absolute;
+  right: 0;
+  bottom: 10rpx;
+  font-size: 24rpx;
+  color: #666;
   display: flex;
   align-items: center;
 }
-
-.iconfont-location-icon {
-  font-family: 'iconfont';
-  margin-right: 6rpx;
-  color: #666;
-}
-
-.loc-text {
-  font-size: 24rpx;
-  color: #666;
-  word-break: break-all;
-}
+.location-icon { margin-right: 6rpx; }
 
 /* 按钮组 */
 .card-actions {
@@ -1199,13 +1131,13 @@ export default {
 .detail-images {
   display: flex;
   flex-wrap: wrap;
-  gap: 12rpx;
+  gap: 20rpx;
   margin-top: 10rpx;
 }
 
 .detail-img {
-  width: calc((100% - 24rpx) / 3);
-  height: 180rpx;
+  width: 200rpx;
+  height: 200rpx;
   border-radius: 12rpx;
   background: #f5f5f5;
 }

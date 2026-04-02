@@ -114,13 +114,19 @@ export default {
       total: 0,
       loading: false,
       hasMore: true,
+      hasInited: false,
 	  finallys:[
 			{date:"",time:""},
 		  ],
     };
   },
-  mounted() {
-	this.loadDeviceList(true);
+  onShow() {
+    // 从进/退场页返回时自动刷新列表；首进页面也走这里
+    if (!this.hasInited) {
+      this.hasInited = true;
+    }
+    this.deviceCurrent = 1;
+    this.loadDeviceList(true);
   },
   // 下拉刷新（页面级生命周期）
   onPullDownRefresh() {

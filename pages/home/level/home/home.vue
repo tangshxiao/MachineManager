@@ -75,9 +75,9 @@
 								<view class="record-time">
 									<image src="/static/icon_time_img.png" style="width: 22rpx; height: 22rpx; margin-right: 8rpx;"></image>
 									打卡时间{{ item.time || '' }}
-									<view class="record-time-rigth">
-										{{ item.address || '' }}
-									</view>
+								</view>
+								<view class="record-address" v-if="item.address">
+									{{ item.address }}
 								</view>
 							</view>
 							<view v-if="attendanceList.length === 0" class="user-card-Record-Component" style="text-align:center;color:#999;">
@@ -128,10 +128,9 @@
 <script>
 	import http from '@/utils/request.js'
 	import API_ENDPOINTS from '@/config/api.js'
-	import { getAllCacheRecords, markRecordUploaded, getCacheStats, isAwaitingUpload, updateCacheRecord } from '@/utils/offlineCache.js'
+	import { markRecordUploaded, getCacheStats, getAwaitingUploadRecords } from '@/utils/offlineCache.js'
 	import { saveSuccessRecord } from '@/utils/successRecordCache.js'
 	import { ensureAddressForUpload } from '@/utils/locationAddress.js'
-	import { ensureAttendanceSubmitPid } from '@/utils/attendancePid.js'
 
 	const HOME_DEVICE_LIST_CACHE_KEY = 'HOME_DEVICE_LIST_CACHE'
 	
@@ -151,20 +150,25 @@
       // 网络提示相关
       showNetworkNotice: false,
       uploading: false,
-      isOnline: true // 网络状态
+      isOnline: true, // 网络状态
+      cacheStats: {
+        total: 0,
+        pending: 0,
+        success: 0,
+        failed: 0,
+        corrupted: 0
+      }
     }
   },
   
   computed: {
     // 是否有待上传的记录
     hasPendingRecords() {
-      const stats = getCacheStats()
-      return stats.pending > 0
+      return this.cacheStats.pending > 0
     },
     // 待上传记录数量
     pendingCount() {
-      const stats = getCacheStats()
-      return stats.pending
+      return this.cacheStats.pending
     }
   },
 
@@ -187,11 +191,16 @@
     this.deviceCurrent = 1
     this.loadAttendanceList()
     this.loadDeviceList()
+    this.refreshCacheStats()
     // 检测网络状态和待上传记录
     this.checkNetworkStatus()
   },
 
   methods: {
+    refreshCacheStats() {
+      this.cacheStats = getCacheStats()
+    },
+
     async loadAttendanceList() {
       try {
         const res = await http.post(API_ENDPOINTS.ATTENDANCE_LIST_API, {
@@ -375,7 +384,7 @@
 					}
 					if (isNetworkError || isResponseParseError) {
 						// 接口失败/无网络时，允许直接进入打卡页，后续走离线缓存
-						uni.showToast({ title: '网络异常，进入离线打卡', icon: 'none' });
+						// uni.showToast({ title: '网络异常，进入离线打卡', icon: 'none' });
 						uni.navigateTo({
 							url: '/pages/home/level/UploadData?result=' + encodeURIComponent(jieguo.result)
 						});
@@ -539,9 +548,9 @@
 		  success: (res) => {
 			const isOnline = res.networkType !== 'none' && res.networkType !== 'unknown'
 			this.isOnline = isOnline
-			// 重新获取统计数据，确保是最新的
-			const stats = getCacheStats()
-			const hasPending = stats.pending > 0
+			// 重新获取统计数据，确保提示文案与缓存一致
+			this.refreshCacheStats()
+			const hasPending = this.cacheStats.pending > 0
 			this.showNetworkNotice = isOnline && hasPending
 			resolve(isOnline)
 		  },
@@ -567,9 +576,7 @@
 		return
 	  }
 	  
-	  const records = getAllCacheRecords()
-	  const pendingRecords = records
-		.filter(record => isAwaitingUpload(record))
+	  const pendingRecords = getAwaitingUploadRecords({ validOnly: true })
 		.map(record => ({
 		  id: record.id,
 		  rawData: record
@@ -615,6 +622,27 @@
 			failedCount++
 			continue
 		  }
+
+		  // 统一补齐地址：有经纬度就逆地理，无经纬度（attendance）先定位再逆地理
+		  try {
+			const fixedLocation = await ensureAddressForUpload({
+			  address: submitData.address || rawData.address || '',
+			  lng: submitData.lng || rawData.lng || '',
+			  lat: submitData.lat || rawData.lat || '',
+			  needLocateWhenMissing: rawData.type === 'attendance'
+			})
+			submitData.lng = submitData.lng || fixedLocation.lng || ''
+			submitData.lat = submitData.lat || fixedLocation.lat || ''
+			submitData.address = submitData.address || fixedLocation.address || ''
+			// 业务要求：有经纬度就必须有反地理地址
+			if (!submitData.address && submitData.lng && submitData.lat) {
+			  markRecordUploaded(item.id, false, '反地理编码失败，请稍后重试')
+			  failedCount++
+			  continue
+			}
+		  } catch (geoErr) {
+			console.warn('离线上报位置补齐失败:', geoErr)
+		  }
 		  
 		  // 如果有本地图片，先上传图片
 		  if (rawData.images && rawData.images.length > 0 && !submitData.imgs) {
@@ -638,46 +666,16 @@
 			  // 继续提交，但不包含图片
 			}
 		  }
-
-		  // 统一补齐地址：有经纬度直接反查，没经纬度则先定位再反查
-		  try {
-			const fixedLocation = await ensureAddressForUpload({
-			  address: submitData.address || rawData.address || '',
-			  lng: submitData.lng || rawData.lng || '',
-			  lat: submitData.lat || rawData.lat || '',
-			  needLocateWhenMissing: rawData.type === 'attendance'
-			})
-			submitData.address = submitData.address || fixedLocation.address || ''
-			submitData.lng = submitData.lng || fixedLocation.lng || ''
-			submitData.lat = submitData.lat || fixedLocation.lat || ''
-		  } catch (geoErr) {
-			console.warn('离线上报位置补齐失败:', geoErr)
-		  }
-
-		  ensureAttendanceSubmitPid(submitData, rawData)
 		  
 		  // 提交数据
-		  // 离线缓存重新上报时，attendance/add 约定 status=1
-		  submitData.status = 1
 		  await http.post(API_ENDPOINTS.ATTENDANCE_ADD_API, submitData, {
 			header: {
 			  'Content-Type': 'application/json'
 			}
 		  })
 		  
-		  // 标记为已上传，并回写根级地址等，与离线列表展示一致
+		  // 标记为已上传
 		  markRecordUploaded(item.id, true)
-		  updateCacheRecord(item.id, {
-			address: submitData.address || rawData.address || '',
-			lng: submitData.lng || rawData.lng || '',
-			lat: submitData.lat || rawData.lat || '',
-			imgs: submitData.imgs || rawData.imgs || '',
-			data: JSON.stringify(submitData),
-			pid: submitData.pid,
-			deviceId: submitData.deviceId || rawData.deviceId,
-			deviceNo: submitData.deviceNo || rawData.deviceNo || '',
-			deviceName: rawData.deviceName || submitData.deviceName || ''
-		  })
 		  saveSuccessRecord({
 			id: rawData.id || item.id,
 			deviceId: submitData.deviceId || rawData.deviceId || 0,
@@ -705,6 +703,7 @@
 	  
 	  uni.hideLoading()
 	  this.uploading = false
+	  this.refreshCacheStats()
 	  
 	  if (successCount > 0) {
 		uni.showToast({
@@ -861,11 +860,19 @@
 	}
 	
 	.record-time {
-		margin-top: 20rpx;
+		margin-top: 5rpx;
 		color: #666;
 		font-size: 26rpx;
 		display: flex;
 		align-items: center;
+	}
+
+	.record-address {
+		margin-top: 12rpx;
+		color: #666;
+		font-size: 26rpx;
+		line-height: 1.4;
+		word-break: break-all;
 	}
 	
 	.user-card-Record-text{

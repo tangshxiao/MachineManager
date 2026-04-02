@@ -131,7 +131,7 @@
 <script>
 import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
-import { saveCacheRecordWithPersistedImages } from '@/utils/offlineCache.js'
+import { saveCacheRecord } from '@/utils/offlineCache.js'
 
 	//模拟设备编号
 const validDevices = ["DEV001", "DEV002", "DEV003"];
@@ -523,6 +523,7 @@ export default {
 	  return new Promise((resolve, reject) => {
 		uni.getLocation({
 		  type: 'gcj02',
+		  highAccuracy: true,// 开启高精度（GPS 硬件）
 		  success: (res) => {
 			this.lng = String(res.longitude);
 			this.lat = String(res.latitude);
@@ -712,7 +713,7 @@ export default {
 				data: JSON.stringify(submitData)
 			};
 			
-			const result = await saveCacheRecordWithPersistedImages(cacheData);
+			const result = saveCacheRecord(cacheData);
 			
 			if (result.success) {
 				// 显示黄色提示
@@ -793,7 +794,7 @@ export default {
 				})
 			};
 			
-			const cacheResult = await saveCacheRecordWithPersistedImages(cacheData);
+			const cacheResult = saveCacheRecord(cacheData);
 			if (cacheResult.success) {
 				uni.showToast({
 					title: '提交失败，数据已缓存',

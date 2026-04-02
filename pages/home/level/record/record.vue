@@ -548,6 +548,10 @@ export default {
         submitData.address = submitData.address || fixedLocation.address || ''
         submitData.lng = submitData.lng || fixedLocation.lng || ''
         submitData.lat = submitData.lat || fixedLocation.lat || ''
+        // 业务要求：有经纬度就必须有反地理地址
+        if (!submitData.address && submitData.lng && submitData.lat) {
+          throw new Error('反地理编码失败，请稍后重试')
+        }
 
         ensureAttendanceSubmitPid(submitData, rawData)
 
