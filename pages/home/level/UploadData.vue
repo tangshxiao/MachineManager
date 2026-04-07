@@ -104,6 +104,7 @@ import API_ENDPOINTS from '@/config/api.js'
 import { saveCacheRecordWithPersistedImages } from '@/utils/offlineCache.js'
 import { saveSuccessRecord } from '@/utils/successRecordCache.js'
 import { getSelectedProjectIdForApi } from '@/utils/attendancePid.js'
+import { checkAttendanceInRange } from '@/utils/attendanceCheck.js'
 
 const HOME_DEVICE_LIST_CACHE_KEY = 'HOME_DEVICE_LIST_CACHE'
 
@@ -702,6 +703,11 @@ export default {
 				 }
 				 
 				 // 在线状态，正常提交
+				 const inRange = await checkAttendanceInRange(submitData)
+				 if (!inRange) {
+					 uni.hideLoading()
+					 return
+				 }
 				 // 如果 code !== 0，request.js 会显示 msg 并 reject，这里会被 catch 捕获
 				 await http.post(API_ENDPOINTS.ATTENDANCE_ADD_API, submitData, {
 					 header: {

@@ -145,6 +145,7 @@ import { saveSuccessRecord } from '@/utils/successRecordCache.js'
 import { getAllCacheRecords, markRecordUploaded, updateCacheRecord, isAwaitingUpload, getCachedRecordAddress } from '@/utils/offlineCache.js'
 import { ensureAddressForUpload } from '@/utils/locationAddress.js'
 import { ensureAttendanceSubmitPid } from '@/utils/attendancePid.js'
+import { checkAttendanceInRange } from '@/utils/attendanceCheck.js'
 
 export default {
   data() { 
@@ -557,6 +558,10 @@ export default {
 
         // 离线缓存重新上报时，attendance/add 约定 status=1
         submitData.status = 1
+        const inRange = await checkAttendanceInRange(submitData)
+        if (!inRange) {
+          throw new Error('当前没有在打卡范围内')
+        }
         await http.post(API_ENDPOINTS.ATTENDANCE_ADD_API, submitData, {
           header: {
             'Content-Type': 'application/json'
@@ -601,10 +606,12 @@ export default {
       } catch (e) {
         const errMsg = (e && (e.msg || e.message)) || '上传失败'
         markRecordUploaded(item.rawData.id, false, errMsg)
-        uni.showToast({
-          title: errMsg,
-          icon: 'none'
-        })
+        if (errMsg !== '当前没有在打卡范围内') {
+          uni.showToast({
+            title: errMsg,
+            icon: 'none'
+          })
+        }
       } finally {
         uni.hideLoading()
       }

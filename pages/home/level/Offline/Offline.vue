@@ -174,6 +174,7 @@ import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
 import { saveSuccessRecord } from '@/utils/successRecordCache.js'
 import { ensureAddressForUpload } from '@/utils/locationAddress.js'
+import { checkAttendanceInRange } from '@/utils/attendanceCheck.js'
 
 export default {
 	
@@ -657,6 +658,12 @@ export default {
           }
           
           // 提交数据
+          const inRange = await checkAttendanceInRange(submitData);
+          if (!inRange) {
+            markRecordUploaded(item.id, false, '当前没有在打卡范围内');
+            failedCount++;
+            continue;
+          }
           await http.post(API_ENDPOINTS.ATTENDANCE_ADD_API, submitData, {
             header: {
               'Content-Type': 'application/json'
