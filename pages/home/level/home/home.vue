@@ -132,6 +132,7 @@
 	import { saveSuccessRecord } from '@/utils/successRecordCache.js'
 	import { ensureAddressForUpload } from '@/utils/locationAddress.js'
 	import { checkAttendanceInRange } from '@/utils/attendanceCheck.js'
+	import { ensureDeviceInSelectedProject } from '@/utils/projectScopeCheck.js'
 
 	const HOME_DEVICE_LIST_CACHE_KEY = 'HOME_DEVICE_LIST_CACHE'
 	
@@ -669,6 +670,16 @@
 		  }
 		  
 		  // 提交数据
+		  const inSelectedProject = await ensureDeviceInSelectedProject({
+			submitData,
+			rawData
+		  })
+		  if (!inSelectedProject) {
+			markRecordUploaded(item.id, false, '当前设备不在选择项目内，请切换项目后重新打卡')
+			failedCount++
+			continue
+		  }
+
 		  const inRange = await checkAttendanceInRange(submitData)
 		  if (!inRange) {
 			markRecordUploaded(item.id, false, '当前没有在打卡范围内')

@@ -174,6 +174,16 @@ export default {
 		this.getLocation()
 	},
 	methods: {
+		// 获取当前本地选中的项目ID集合
+		getSelectedProjectIdSet() {
+			const selectedProjectIds = uni.getStorageSync('selectedProjectIds') || ''
+			const ids = String(selectedProjectIds)
+				.split(',')
+				.map(id => id.trim())
+				.filter(Boolean)
+			return new Set(ids)
+		},
+
 		// 获取当前默认选中的项目ID（多选时取第一个）
 		getDefaultSelectedProjectId() {
 			const selectedProjectIds = uni.getStorageSync('selectedProjectIds') || ''
@@ -199,7 +209,15 @@ export default {
 		async loadProjectList() {
 			try {
 				const res = await api.fetchProjectList(1, 100) // 获取前100个项目
-				this.projectList = (res && res.records) || []
+				const allProjects = (res && res.records) || []
+				const selectedIdSet = this.getSelectedProjectIdSet()
+				// 仅展示本地已选中的项目，避免出现非当前客户项目
+				this.projectList = allProjects.filter(p => selectedIdSet.has(String(p.id)))
+				if (!this.projectList.length) {
+					this.projectIndex = -1
+					this.selectedProject = null
+					this.formData.projectId = ''
+				}
 				// 绑定设备时默认回选当前客户选中的项目（多选取第一个）
 				this.applyDefaultProjectSelection()
 			} catch (e) {

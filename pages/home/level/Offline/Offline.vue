@@ -175,6 +175,7 @@ import API_ENDPOINTS from '@/config/api.js'
 import { saveSuccessRecord } from '@/utils/successRecordCache.js'
 import { ensureAddressForUpload } from '@/utils/locationAddress.js'
 import { checkAttendanceInRange } from '@/utils/attendanceCheck.js'
+import { ensureDeviceInSelectedProject } from '@/utils/projectScopeCheck.js'
 
 export default {
 	
@@ -611,6 +612,18 @@ export default {
               }
               if (qrDetails.deviceName && !this.isValidDeviceText(rawData.deviceName)) {
                 rawData.deviceName = qrDetails.deviceName;
+              }
+
+              // 校验设备是否属于当前选择项目
+              const inSelectedProject = await ensureDeviceInSelectedProject({
+                submitData,
+                rawData,
+                qrDetails
+              });
+              if (!inSelectedProject) {
+                markRecordUploaded(item.id, false, '当前设备不在选择项目内，请切换项目后重新打卡');
+                failedCount++;
+                continue;
               }
 
               // 重新上传时同步回写缓存中的设备信息，确保列表/详情立即可见

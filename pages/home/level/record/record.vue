@@ -146,6 +146,7 @@ import { getAllCacheRecords, markRecordUploaded, updateCacheRecord, isAwaitingUp
 import { ensureAddressForUpload } from '@/utils/locationAddress.js'
 import { ensureAttendanceSubmitPid } from '@/utils/attendancePid.js'
 import { checkAttendanceInRange } from '@/utils/attendanceCheck.js'
+import { ensureDeviceInSelectedProject } from '@/utils/projectScopeCheck.js'
 
 export default {
   data() { 
@@ -558,6 +559,13 @@ export default {
 
         // 离线缓存重新上报时，attendance/add 约定 status=1
         submitData.status = 1
+        const inSelectedProject = await ensureDeviceInSelectedProject({
+          submitData,
+          rawData
+        })
+        if (!inSelectedProject) {
+          throw new Error('当前设备不在选择项目内，请切换项目后重新打卡')
+        }
         const inRange = await checkAttendanceInRange(submitData)
         if (!inRange) {
           throw new Error('当前没有在打卡范围内')

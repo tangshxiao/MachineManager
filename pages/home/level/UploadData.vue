@@ -105,6 +105,7 @@ import { saveCacheRecordWithPersistedImages } from '@/utils/offlineCache.js'
 import { saveSuccessRecord } from '@/utils/successRecordCache.js'
 import { getSelectedProjectIdForApi } from '@/utils/attendancePid.js'
 import { checkAttendanceInRange } from '@/utils/attendanceCheck.js'
+import { ensureDeviceInSelectedProject } from '@/utils/projectScopeCheck.js'
 
 const HOME_DEVICE_LIST_CACHE_KEY = 'HOME_DEVICE_LIST_CACHE'
 
@@ -127,6 +128,8 @@ export default {
 			qrCodeUrl: "",
 			qrNo: "",
 			scanRawResult: ""
+			,
+			deviceProjectId: '' // 设备归属项目ID（用于打卡前校验）
 		}
 	},
 	  
@@ -261,6 +264,7 @@ export default {
 						if (qrDetails.deviceNo) this.shebei = qrDetails.deviceNo;
 						if (qrDetails.deviceName) this.shengchan = qrDetails.deviceName;
 						if (qrDetails.deviceId) this.deviceId = qrDetails.deviceId;
+						if (qrDetails.pid !== undefined && qrDetails.pid !== null) this.deviceProjectId = String(qrDetails.pid);
 						if (qrDetails.url) this.qrCodeUrl = qrDetails.url;
 						
 						uni.showToast({
@@ -561,6 +565,18 @@ export default {
 				 
 				 // 6. 检测网络状态
 				 const isOnline = await this.checkNetworkStatus();
+				 
+				 // 在线时：校验设备归属项目是否与当前选择项目一致
+				 if (isOnline) {
+					 const inSelectedProject = await ensureDeviceInSelectedProject({
+						 submitData,
+						 rawData: { qrNo: this.qrNo }
+					 })
+					 if (!inSelectedProject) {
+						 uni.hideLoading()
+						 return
+					 }
+				 }
 				 
 				 // 在线提交时，经纬度必填，避免接口返回“位置信息不能为空”
 				 if (isOnline && (!this.lng || !this.lat)) {
