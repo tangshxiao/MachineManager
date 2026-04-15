@@ -55,6 +55,8 @@
 </template>
 
 <script>
+import { scanBizQrCode } from '@/utils/scanBizQr.js'
+
 export default {
   methods: {
     navigateTo(page) {
@@ -82,25 +84,16 @@ export default {
 	
 	bindDevice(){
 		// 先扫码，然后跳转到绑定设备页面
-		uni.scanCode({
-			scanType: ['barCode', 'qrCode'],
-			success: (res) => {
-				console.log('扫码成功，内容:', res.result);
-				// 跳转到绑定设备页面，传递二维码内容
+		scanBizQrCode()
+			.then(({ text }) => {
+				console.log('扫码成功，内容:', text);
 				uni.navigateTo({
-					url: '/pages/home/level/BindDevice?qrCode=' + encodeURIComponent(res.result)
+					url: '/pages/home/level/BindDevice?qrCode=' + encodeURIComponent(text)
 				});
-			},
-			fail: (err) => {
+			})
+			.catch((err) => {
 				console.error('扫码失败:', err);
-				if (err.errMsg && !err.errMsg.includes('cancel')) {
-					uni.showToast({
-						title: '扫码失败',
-						icon: 'none'
-					});
-				}
-			}
-		});
+			})
 	},
 	
 	check(){

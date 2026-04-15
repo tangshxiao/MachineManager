@@ -1,5 +1,6 @@
 <script>
 	import API_ENDPOINTS from '@/config/api.js';
+	import { scanBizQrCode } from '@/utils/scanBizQr.js'
 
 	export default {
 		onLaunch: function() {
@@ -20,22 +21,17 @@
 
 			uni.onTabBarMidButtonTap(() => {
 				console.log("点击了中间按钮，跳转到扫码页面")
-				uni.scanCode({
-					scanType: ['barCode', 'qrCode'],
-					success: (res) => {
-						console.log('条码内容：' + res.result);
+				scanBizQrCode()
+					.then(({ text }) => {
+						console.log('条码内容：' + text);
 						uni.showToast({ title: '扫码成功', icon: 'success' });
 						uni.navigateTo({
-							url: '/pages/home/level/UploadData?result=' + encodeURIComponent(res.result)
+							url: '/pages/home/level/UploadData?result=' + encodeURIComponent(text)
 						});
-					},
-					fail: (err) => {
+					})
+					.catch((err) => {
 						console.error('扫码失败:', err);
-						if (err.errMsg && !err.errMsg.includes('cancel')) {
-							uni.showToast({ title: '扫码失败', icon: 'none' });
-						}
-					}
-				});
+					})
 			})
 		},
 		onShow: function() { console.log('App Show') },

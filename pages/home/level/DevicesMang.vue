@@ -95,6 +95,7 @@
 <script>
 import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
+import { scanBizQrCode } from '@/utils/scanBizQr.js'
 
 export default {
   data() {
@@ -301,22 +302,13 @@ export default {
 	},
 	// 进/退场：扫码后进入绑定设备页
 	scanInOut() {
-	  uni.scanCode({
-		scanType: ['barCode', 'qrCode'],
-		success: (res) => {
-		  uni.navigateTo({
-			url: '/pages/home/level/BindDevice?qrCode=' + encodeURIComponent(res.result)
-		  })
-		},
-		fail: (err) => {
-		  if (err.errMsg && !err.errMsg.includes('cancel')) {
-			uni.showToast({
-			  title: '扫码失败',
-			  icon: 'none'
-			})
-		  }
-		}
-	  })
+	  scanBizQrCode()
+	    .then(({ text }) => {
+	      uni.navigateTo({
+	        url: '/pages/home/level/BindDevice?qrCode=' + encodeURIComponent(text)
+	      })
+	    })
+	    .catch(() => {})
 	},
 	// 更新设备状态
 	async updateDeviceStatus(item, status) {

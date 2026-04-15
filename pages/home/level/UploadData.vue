@@ -106,6 +106,7 @@ import { saveSuccessRecord } from '@/utils/successRecordCache.js'
 import { getSelectedProjectIdForApi } from '@/utils/attendancePid.js'
 import { checkAttendanceInRange } from '@/utils/attendanceCheck.js'
 import { ensureDeviceInSelectedProject } from '@/utils/projectScopeCheck.js'
+import { scanBizQrCode } from '@/utils/scanBizQr.js'
 
 const HOME_DEVICE_LIST_CACHE_KEY = 'HOME_DEVICE_LIST_CACHE'
 
@@ -196,16 +197,11 @@ export default {
 
 		// 重新扫码
 		scanCode() {
-			uni.scanCode({
-				success: (res) => {
-					this.handleScanData(res.result);
-				},
-				fail: (err) => {
-					if (err.errMsg && !err.errMsg.includes('cancel')) {
-						uni.showToast({ title: '扫码失败', icon: 'none' });
-					}
-				}
-			});
+			scanBizQrCode()
+				.then(({ text }) => {
+					this.handleScanData(text);
+				})
+				.catch(() => {});
 		},
 
 		// 处理扫码数据

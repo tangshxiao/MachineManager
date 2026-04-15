@@ -133,6 +133,7 @@
 	import { ensureAddressForUpload } from '@/utils/locationAddress.js'
 	import { checkAttendanceInRange } from '@/utils/attendanceCheck.js'
 	import { ensureDeviceInSelectedProject } from '@/utils/projectScopeCheck.js'
+	import { scanBizQrCode } from '@/utils/scanBizQr.js'
 
 	const HOME_DEVICE_LIST_CACHE_KEY = 'HOME_DEVICE_LIST_CACHE'
 	
@@ -307,13 +308,12 @@
   //   },
 
     		// 1. 开始扫码
-    		uni.scanCode({
-    			success: async (jieguo) => {
-    				console.log('扫码成功,内容:', jieguo.result);
-    				
+    		scanBizQrCode()
+    			.then(async ({ text, data }) => {
+    				console.log('扫码成功,内容:', text);
+
     				try {
-    					// 解析二维码JSON数据，提取qrNo
-    					const qrData = JSON.parse(jieguo.result);
+    					const qrData = data
     					if (!qrData.qrNo) {
     						uni.showToast({
     							title: '二维码格式错误',
@@ -350,7 +350,7 @@
     									if (res.confirm) {
     										// 用户点击确认，跳转到绑定设备页面
     										uni.navigateTo({
-    											url: '/pages/home/level/BindDevice?qrCode=' + encodeURIComponent(jieguo.result)
+    											url: '/pages/home/level/BindDevice?qrCode=' + encodeURIComponent(text)
     										});
     									}
     									// 用户点击取消，直接关闭对话框，不做任何操作
@@ -359,7 +359,7 @@
     						} else if (qrDetails.status === 1) {
     							// 已绑定，跳转到打卡页面
     							uni.navigateTo({
-    								url: '/pages/home/level/UploadData?result=' + encodeURIComponent(jieguo.result)
+    								url: '/pages/home/level/UploadData?result=' + encodeURIComponent(text)
     							});
     						} else {
     							uni.showToast({
@@ -388,7 +388,7 @@
 						// 接口失败/无网络时，允许直接进入打卡页，后续走离线缓存
 						// uni.showToast({ title: '网络异常，进入离线打卡', icon: 'none' });
 						uni.navigateTo({
-							url: '/pages/home/level/UploadData?result=' + encodeURIComponent(jieguo.result)
+							url: '/pages/home/level/UploadData?result=' + encodeURIComponent(text)
 						});
 					} else if (e instanceof SyntaxError) {
 						uni.showToast({ title: '二维码格式错误', icon: 'none' });
@@ -396,21 +396,14 @@
 						// 其他异常也允许继续打卡，避免流程被阻断
 						uni.showToast({ title: '设备信息校验失败，进入打卡页', icon: 'none' });
 						uni.navigateTo({
-							url: '/pages/home/level/UploadData?result=' + encodeURIComponent(jieguo.result)
+							url: '/pages/home/level/UploadData?result=' + encodeURIComponent(text)
 						});
 					}
 				}
-    			},
-    			fail: (err) => {
+    			})
+    			.catch((err) => {
     				console.log('扫码失败', err);
-    				if (err.errMsg && !err.errMsg.includes('cancel')) {
-    					uni.showToast({
-    						title: '扫码失败',
-    						icon: 'none'
-    					});
-    				}
-    			}
-    		});
+    			});
     	},
 
 
@@ -455,23 +448,13 @@
 	},
 	// 扫码后进入绑定设备
 	goToBindDeviceScan() {
-		uni.scanCode({
-			scanType: ['barCode', 'qrCode'],
-			success: (res) => {
+		scanBizQrCode()
+			.then(({ text }) => {
 				uni.navigateTo({
-					url: '/pages/home/level/BindDevice?qrCode=' + encodeURIComponent(res.result)
+					url: '/pages/home/level/BindDevice?qrCode=' + encodeURIComponent(text)
 				});
-			},
-			fail: (err) => {
-				console.error('扫码失败:', err);
-				if (err.errMsg && !err.errMsg.includes('cancel')) {
-					uni.showToast({
-						title: '扫码失败',
-						icon: 'none'
-					});
-				}
-			}
-		});
+			})
+			.catch(() => {});
 	},
 	// 更多功能
 	moreFunctions(){
