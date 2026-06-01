@@ -842,10 +842,8 @@
 		padding: 15rpx;
 		background-color: #F5F8FC;
 		min-height: 100vh;
-		display: flex;        /* 激活弹性布局 */
-		flex-direction: column;  /* 垂直排列 */
-		gap: 20rpx;    
-		font-family: "iconfont";
+		display: flex;
+		flex-direction: column;
 	}
 	
 @font-face {
@@ -914,28 +912,34 @@
 		text-align: center;
 	}
 
+	.user-card-button {
+		margin-bottom: 24rpx;
+	}
+
 	.user-card-Function{
-		height: 266rpx;
 		background-color: #FFFFFF;
 		border-radius: 16rpx;
-		padding-left: 24rpx;
-		padding-right: 24rpx;
-		padding-top: 28rpx;
-		 box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+		padding: 28rpx 24rpx 32rpx;
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+		margin-bottom: 24rpx;
 	}
 	
 	.user-card-Function-img{
 		display: flex;
 		flex-direction: row;
-		gap: 74rpx;
-		justify-content: center;
+		justify-content: space-around;
+		align-items: flex-start;
+		padding: 8rpx 0 0;
 	}
 	
 	.user-card-Function-imga{
-		 width: 120rpx;          /* 功能块总宽 */
-		  display: flex;
-		  flex-direction: column; /* 图片在上，文字在下 */
-		  align-items: center;  
+		width: 33.33%;
+		max-width: 200rpx;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		box-sizing: border-box;
+		padding: 0 8rpx;
 	}
 	
 	.user-card-Function-imga image{
@@ -945,26 +949,28 @@
 	}
 	
 	.user-card-Function-text{
-		width: 120rpx;
-		font-size: 30rpx;
-		color: #1A1A1A ;
+		width: 100%;
+		font-size: 26rpx;
+		color: #1A1A1A;
 		text-align: center;
+		line-height: 1.4;
+		word-break: keep-all;
+		white-space: nowrap;
 	}
 	
 	.user-card-Record{
-		height: 552rpx;
 		background-color: #FFFFFF;
 		border-radius: 16rpx;
-		padding-left: 24rpx;
-		padding-right: 24rpx;
-		padding-top: 28rpx;
+		padding: 28rpx 24rpx 24rpx;
 		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+		margin-bottom: 24rpx;
 	}
 	
 	.user-card-Record-Hide{
 		border-radius: 16rpx;
-		height: 450rpx;
-		overflow: scroll;
+		max-height: 450rpx;
+		min-height: 120rpx;
+		overflow-y: auto;
 	}
 	
 	.record-info {
@@ -1014,13 +1020,13 @@
 	}
 	
 	.user-card-Record-text{
-			display: flex;
-		   font-family: 'PingFang SC', 'Helvetica Neue', 'Arial', sans-serif; /* 没有 PingFang 就用备选 */
-		   font-weight: 600;  /* semibold */
-		   font-size: 32rpx;
-		   line-height: 44rpx;
-		   color: #1A1A1A;
-		   margin-bottom: 28rpx;
+		display: flex;
+		font-family: 'PingFang SC', 'Helvetica Neue', 'Arial', sans-serif;
+		font-weight: 600;
+		font-size: 32rpx;
+		line-height: 44rpx;
+		color: #1A1A1A;
+		margin-bottom: 20rpx;
 	}
 	
 	.user-card-Record-text-img{
@@ -1098,10 +1104,8 @@
 	.user-card-Equipment{
 		background-color: #FFFFFF;
 		border-radius: 16rpx;
-		padding-left: 24rpx;
-		padding-right: 24rpx;
-		padding-top: 28rpx;
-		 box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+		padding: 28rpx 24rpx 24rpx;
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
 	}
 	
 	.user-card-Equipment-text{
