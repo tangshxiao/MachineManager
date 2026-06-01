@@ -83,7 +83,7 @@
         
         <view class="modal-body" v-if="currentDetail">
           <view class="detail-item">
-            <text class="detail-label">设备编号</text>
+            <text class="detail-label">序号</text>
             <text class="detail-value">{{ currentDetail.deviceNo || '-' }}</text>
           </view>
           

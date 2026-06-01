@@ -15,13 +15,13 @@
 				<view class="form-value">{{ qrNo || '--' }}</view>
 			</view>
 
-			<!-- 设备编号 -->
+			<!-- 序号 -->
 			<view class="form-item">
-				<view class="form-label">设备编号:</view>
+				<view class="form-label">序号:</view>
 				<input 
 					class="form-input" 
 					v-model="formData.deviceNo" 
-					placeholder="输入编号" 
+					placeholder="输入序号" 
 					placeholder-style="color:#999"
 					@blur="onDeviceNoBlur"
 				/>
@@ -33,7 +33,7 @@
 				<input 
 					class="form-input" 
 					v-model="formData.deviceName" 
-					placeholder="根据编号带出" 
+					placeholder="根据序号带出" 
 					placeholder-style="color:#999"
 					:disabled="true"
 				/>
@@ -45,7 +45,7 @@
 				<input 
 					class="form-input" 
 					v-model="formData.companyName" 
-					placeholder="根据编号带出" 
+					placeholder="根据序号带出" 
 					placeholder-style="color:#999"
 					:disabled="true"
 				/>
@@ -99,6 +99,33 @@
 			</view>
 		</view>
 
+		<!-- 证明材料 -->
+		<view class="photo-section">
+			<view class="photo-section-title">证明材料（必填）:</view>
+			<view v-if="!images.length" class="photo" @click="uploadPhoto">
+				<view class="photo-tb">
+					<image src="/static/icon_phone_img.png"></image>
+				</view>
+				<view>拍照</view>
+			</view>
+			<view v-else class="photo-row">
+				<view class="photo-slot" v-for="(item, index) in images" :key="item">
+					<image class="thumb-img" :src="item" mode="aspectFill" @click.stop="previewPhoto(index)"></image>
+					<view class="delete-btn" @click.stop="removePhoto(index)">删除</view>
+				</view>
+				<view
+					class="photo-slot add-slot"
+					v-if="images.length < MAX_PHOTOS"
+					@click="uploadPhoto"
+				>
+					<text class="add-icon">+</text>
+				</view>
+			</view>
+			<view class="photo-hint">
+				必填，至少{{ MIN_PHOTOS }}张现场照片，仅支持拍照，最多{{ MAX_PHOTOS }}张（已选 {{ images.length }} 张）。照片必须包含机具整体和二维码
+			</view>
+		</view>
+
 		<!-- 提交按钮 -->
 		<view class="submit-btn-container">
 			<button class="submit-btn" @click="handleSubmit" :disabled="submitting">
@@ -113,13 +140,19 @@ import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
 import api from '@/services/api.js'
 
+const MIN_PHOTOS = 2
+const MAX_PHOTOS = 5
+
 export default {
 	data() {
 		return {
+			MIN_PHOTOS,
+			MAX_PHOTOS,
+			images: [],
 			qrCode: '', // 二维码内容
 			qrNo: '', // 二维码编号
 			formData: {
-				deviceNo: '', // 设备编号
+				deviceNo: '', // 序号
 				deviceName: '', // 设备名称
 				companyName: '', // 归属公司
 				projectId: '', // 归属项目ID
@@ -258,7 +291,7 @@ export default {
 						this.deviceId = String(res.deviceId)
 					}
 
-					// 设备编号
+					// 序号
 					if (res.deviceNo) {
 						this.formData.deviceNo = res.deviceNo
 					}
@@ -288,7 +321,7 @@ export default {
 						}
 					}
 
-					// 扫码后默认当前状态：未反显到设备编号/名称/归属公司等信息 → 进场；已查到设备信息 → 退场
+					// 扫码后默认当前状态：未反显到序号/名称/归属公司等信息 → 进场；已查到设备信息 → 退场
 					const hasDeviceInfo =
 						(res.deviceId != null && res.deviceId !== '' && Number(res.deviceId) !== 0) ||
 						!!(res.deviceNo && String(res.deviceNo).trim()) ||
@@ -314,7 +347,7 @@ export default {
 			}
 		},
 
-		// 设备编号失焦时，根据编号直接查询设备详情
+		// 序号失焦时，根据序号直接查询设备详情
 		async onDeviceNoBlur() {
 			if (!this.formData.deviceNo || !this.formData.deviceNo.trim()) {
 				return
@@ -326,7 +359,7 @@ export default {
 					mask: true
 				})
 
-				// 直接通过设备编号调用设备详情接口
+				// 直接通过序号调用设备详情接口
 				const detailRes = await http.post(API_ENDPOINTS.DEVICE_DETAILS_API, {
 					deviceNo: this.formData.deviceNo.trim()
 				}, {
@@ -455,11 +488,74 @@ export default {
 			}
 		},
 
+		uploadPhoto() {
+			if (this.images.length >= MAX_PHOTOS) {
+				uni.showToast({ title: `最多上传${MAX_PHOTOS}张图片`, icon: 'none' })
+				return
+			}
+			const remain = MAX_PHOTOS - this.images.length
+			uni.chooseImage({
+				count: remain,
+				sizeType: ['original', 'compressed'],
+				sourceType: ['camera'],
+				success: (res) => {
+					const paths = res.tempFilePaths || []
+					const validExt = ['.jpg', '.jpeg', '.png']
+					const newImages = []
+					paths.forEach((p) => {
+						const lower = String(p).toLowerCase()
+						if (validExt.some((ext) => lower.endsWith(ext))) {
+							newImages.push(p)
+						}
+					})
+					if (newImages.length < paths.length) {
+						uni.showToast({ title: '仅支持JPG/PNG格式', icon: 'none' })
+					}
+					this.images = this.images.concat(newImages).slice(0, MAX_PHOTOS)
+				}
+			})
+		},
+
+		removePhoto(index) {
+			this.images.splice(index, 1)
+		},
+
+		previewPhoto(index) {
+			uni.previewImage({
+				urls: this.images,
+				current: this.images[index]
+			})
+		},
+
+		async uploadImages() {
+			if (!this.images || this.images.length === 0) return ''
+			const uploadPromises = this.images.map((filePath) => {
+				return http.upload(filePath, {
+					url: API_ENDPOINTS.UPLOAD_API,
+					name: 'file',
+					showLoading: false
+				}).catch((err) => {
+					console.error('图片上传失败:', err)
+					return null
+				})
+			})
+			const results = await Promise.all(uploadPromises)
+			return results.filter((url) => url !== null).join(',')
+		},
+
 		// 表单验证
 		validateForm() {
+			if (!this.images || this.images.length < MIN_PHOTOS) {
+				uni.showToast({
+					title: `请至少上传${MIN_PHOTOS}张现场照片`,
+					icon: 'none'
+				})
+				return false
+			}
+
 			if (!this.formData.deviceNo || !this.formData.deviceNo.trim()) {
 				uni.showToast({
-					title: '请输入设备编号',
+					title: '请输入序号',
 					icon: 'none'
 				})
 				return false
@@ -507,6 +603,22 @@ export default {
 			})
 
 			try {
+				let imgs = ''
+				try {
+					imgs = await this.uploadImages()
+				} catch (imgError) {
+					console.warn('图片上传失败:', imgError)
+				}
+				if (!imgs) {
+					uni.hideLoading()
+					uni.showToast({
+						title: '照片上传失败，请检查网络后重试',
+						icon: 'none'
+					})
+					this.submitting = false
+					return
+				}
+
 				// 构建提交数据
 				// 状态映射：0进场 1在用 2维修 3退场
 				// 表单中只有"进场"/"退场"，所以映射为：进场->0, 退场->3
@@ -518,11 +630,12 @@ export default {
 				const submitData = {
 					qrNo: this.qrNo, // 二维码编号
 					deviceId: Number(this.deviceId), // 设备ID（根据选择设备回填）
-					deviceNo: this.formData.deviceNo.trim(), // 设备编号
+					deviceNo: this.formData.deviceNo.trim(), // 序号
 					pid: Number(this.formData.projectId), // 归属项目ID（转换为整数）
 					address: this.address || '', // 地址
 					lng: this.lng || '', // 经度
 					lat: this.lat || '', // 纬度
+					imgs,
 					status: statusMap[this.formData.status] !== undefined ? statusMap[this.formData.status] : 0 // 状态：0进场 1在用 2维修 3退场
 				}
 
@@ -691,6 +804,106 @@ page {
 .submit-btn[disabled] {
 	background-color: #999;
 	opacity: 0.6;
+}
+
+.photo-section {
+	margin-top: 30rpx;
+	background-color: #ffffff;
+	border-radius: 16rpx;
+	padding: 30rpx 24rpx;
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
+}
+
+.photo-section-title {
+	font-size: 28rpx;
+	color: #333;
+	margin-bottom: 20rpx;
+}
+
+.photo {
+	height: 200rpx;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	flex-direction: column;
+	color: #808080;
+	background-color: #F5F9FC;
+	border-radius: 16rpx;
+}
+
+.photo-tb {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	margin-bottom: 10rpx;
+}
+
+.photo-tb image {
+	width: 58rpx;
+	height: 52rpx;
+}
+
+.photo-hint {
+	font-size: 26rpx;
+	color: #808080;
+	line-height: 1.5;
+	margin-top: 16rpx;
+}
+
+.photo-row {
+	min-height: 200rpx;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	background-color: #F5F9FC;
+	border-radius: 16rpx;
+	padding: 16rpx 20rpx;
+}
+
+.photo-slot {
+	position: relative;
+	width: 30%;
+	height: 170rpx;
+	border-radius: 12rpx;
+	overflow: hidden;
+	background-color: #FFFFFF;
+	margin-right: 3%;
+	margin-bottom: 16rpx;
+}
+
+.photo-slot:nth-child(3n) {
+	margin-right: 0;
+}
+
+.thumb-img {
+	width: 100%;
+	height: 100%;
+}
+
+.delete-btn {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	height: 40rpx;
+	line-height: 40rpx;
+	text-align: center;
+	font-size: 24rpx;
+	color: #FFFFFF;
+	background: rgba(0, 0, 0, 0.45);
+}
+
+.add-slot {
+	justify-content: center;
+	align-items: center;
+	display: flex;
+	border: 2rpx dashed #CCCCCC;
+	background-color: transparent;
+}
+
+.add-icon {
+	font-size: 56rpx;
+	color: #CCCCCC;
 }
 </style>
 

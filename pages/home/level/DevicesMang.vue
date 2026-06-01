@@ -5,7 +5,7 @@
        <image src="/static/icon_secrch_img.png" style="width:28rpx;height:28rpx;position:absolute;left:58rpx;z-index:1;"></image>
         <input 
           type="text" 
-          placeholder="输入设备编号或名称搜索" 
+          placeholder="输入序号或名称搜索" 
           v-model="keyword"
           @input="onSearch"
           style="flex:1;padding-left:66rpx;margin-left:30rpx;"

@@ -107,7 +107,7 @@
         
         <view class="modal-body" v-if="currentDetail">
           <view class="detail-item">
-            <text class="detail-label">设备编号</text>
+            <text class="detail-label">序号</text>
             <text class="detail-value">{{ currentDetail.deviceNo || '-' }}</text>
           </view>
           
@@ -253,7 +253,7 @@ export default {
       if (!this.isOnline || !records || records.length === 0) return records;
 
       const enriched = await Promise.all(records.map(async (record) => {
-        // 只有设备编号/名称都无效时才查询，避免占位值阻断接口请求
+        // 只有序号/名称都无效时才查询，避免占位值阻断接口请求
         const hasValidNo = this.isValidDeviceText(record.deviceNo);
         const hasValidName = this.isValidDeviceText(record.deviceName);
         if ((hasValidNo && hasValidName) || !record.qrNo) return record;
@@ -348,7 +348,7 @@ export default {
         }
       }
 
-      // 详情兜底：设备编号/名称缺失时，按 qrNo 再查询一次
+      // 详情兜底：序号/名称缺失时，按 qrNo 再查询一次
       let detailQrInfo = null;
       const fallbackQrNo = rawData.qrNo || parsedData.qrNo || '';
       const needDeviceNo = !this.isValidDeviceText(parsedData.deviceNo) && !this.isValidDeviceText(rawData.deviceNo) && !this.isValidDeviceText(item.deviceNo);

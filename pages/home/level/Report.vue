@@ -6,14 +6,14 @@
 		<view >
 		<view class="box1">
 				<view class="box1-text">
-					设备编号<view class="red">*</view>
+					序号<view class="red">*</view>
 				</view>
 				<view class="device-select-wrapper">
 					<input 
 						class="box1-input" 
 						v-model="deviceKeyword" 
 						type="text" 
-						placeholder="输入设备编号或名称搜索"
+						placeholder="输入序号或名称搜索"
 						@focus="handleDeviceInputFocus"
 						@blur="handleDeviceInputBlur"
 						:id="'device-input'"
@@ -133,7 +133,7 @@ import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
 import { saveCacheRecord } from '@/utils/offlineCache.js'
 
-	//模拟设备编号
+	//模拟序号
 const validDevices = ["DEV001", "DEV002", "DEV003"];
 
 export default {
@@ -617,7 +617,7 @@ export default {
 		  }
 		
 		//   if (!validDevices.includes(this.shebie)) {
-		// 	this.errorShebie = "该设备编号不存在，请重新输入";
+		// 	this.errorShebie = "该序号不存在，请重新输入";
 		// 	return;
 		//   }
 	  

@@ -16,7 +16,7 @@
 	
 	<view class="Content">
 		<view class="">
-			<view class="Content-text">设备编号:
+			<view class="Content-text">序号:
 				<view class="Content-text-left">
 					{{shebei}}
 				</view>
@@ -47,7 +47,7 @@
 				   <image src="/static/icon_phone_img.png"></image>
 				</view>
 				<view class="">
-					拍照/从相机选择
+					拍照
 				</view>
 			</view>
 			<view v-else class="photo-row">
@@ -57,14 +57,14 @@
 				</view>
 				<view
 					class="photo-slot add-slot"
-					v-if="images.length < 5"
+					v-if="images.length < MAX_PHOTOS"
 					@click="upload"
 				>
 					<text class="add-icon">+</text>
 				</view>
 			</view>
 			<view class="photo-text">
-				必填，至少1张现场设备照片，支持JPG/PNG格式，最多5张（已选 {{ images.length }} 张）
+				必填，至少{{ MIN_PHOTOS }}张现场照片，仅支持拍照，最多{{ MAX_PHOTOS }}张（已选 {{ images.length }} 张）。照片必须包含机具整体和二维码
 			</view>
 			<view class="Content-text qr-code-row">
 				<view class="qr-code-label">设备二维码:</view>
@@ -109,10 +109,14 @@ import { ensureDeviceInSelectedProject } from '@/utils/projectScopeCheck.js'
 import { scanBizQrCode } from '@/utils/scanBizQr.js'
 
 const HOME_DEVICE_LIST_CACHE_KEY = 'HOME_DEVICE_LIST_CACHE'
+const MIN_PHOTOS = 2
+const MAX_PHOTOS = 5
 
 export default {
 	data() {
 		return {
+			MIN_PHOTOS,
+			MAX_PHOTOS,
 			shebei: "--",
 			shengchan: "--",
 			message: "在用",
@@ -150,7 +154,7 @@ export default {
 	},
 	  
 	methods: {
-		// 离线时：从首页缓存的设备列表里用 qrNo 匹配设备，回填设备编号/名称
+		// 离线时：从首页缓存的设备列表里用 qrNo 匹配设备，回填序号/名称
 		getDeviceInfoFromHomeCacheByQrNo(qrNo) {
 			if (!qrNo) return null
 			try {
@@ -321,15 +325,15 @@ export default {
 		},
 
 		upload(){
-			if (this.images.length >= 5) {
-				uni.showToast({ title: "最多上传5张图片", icon: "none" });
+			if (this.images.length >= MAX_PHOTOS) {
+				uni.showToast({ title: `最多上传${MAX_PHOTOS}张图片`, icon: "none" });
 				return;
 			}
-			const remain = 5 - this.images.length;
+			const remain = MAX_PHOTOS - this.images.length;
 			uni.chooseImage({
 				count: remain,
 				sizeType: ["original", "compressed"],
-				sourceType: ["camera", "album"],
+				sourceType: ["camera"],
 				success: (res) => {
 					const paths = res.tempFilePaths || [];
 					const validExt = [".jpg", ".jpeg", ".png"];
@@ -344,7 +348,7 @@ export default {
 					if (newImages.length < paths.length) {
 						uni.showToast({ title: "仅支持JPG/PNG格式", icon: "none" });
 					}
-					this.images = this.images.concat(newImages).slice(0, 5);
+					this.images = this.images.concat(newImages).slice(0, MAX_PHOTOS);
 				},
 			});
 		},
@@ -478,7 +482,7 @@ export default {
 			 
 			 if (!this.shebei || !this.shebei.trim()) {
 				 uni.showToast({
-					 title: '设备编号不能为空',
+					 title: '序号不能为空',
 					 icon: 'none'
 				 });
 				 return;
@@ -500,9 +504,9 @@ export default {
 				 return;
 			 }
 			 
-			 if (!this.images || this.images.length === 0) {
+			 if (!this.images || this.images.length < MIN_PHOTOS) {
 				 uni.showToast({
-					 title: '请上传现场设备照片',
+					 title: `请至少上传${MIN_PHOTOS}张现场照片`,
 					 icon: 'none'
 				 });
 				 return;
@@ -546,7 +550,7 @@ export default {
 				 // 5. 构建提交数据
 				 const submitData = {
 					 deviceId: this.deviceId,
-					 deviceNo: this.shebei || "", // 设备编号
+					 deviceNo: this.shebei || "", // 序号
 					 qrNo: this.qrNo || "",
 					 type: type, // 1在用 2维修
 					 pid: getSelectedProjectIdForApi(),

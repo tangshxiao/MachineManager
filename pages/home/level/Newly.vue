@@ -8,7 +8,7 @@
 			<view class="Basic-box">
 				<view class="">
 					<view class="Title">
-						设备编号 <text class="required">*</text>
+						序号 <text class="required">*</text>
 					</view>
 					<view class="Content">
 						<input type="text" v-model="formData.deviceNo" placeholder="EQ-2005-001" placeholder-style="color:#999"/>
@@ -262,7 +262,7 @@ export default {
 		validateForm() {
 			if (!this.formData.deviceNo || !this.formData.deviceNo.trim()) {
 				uni.showToast({
-					title: '请输入设备编号',
+					title: '请输入序号',
 					icon: 'none'
 				})
 				return false
