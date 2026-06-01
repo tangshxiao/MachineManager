@@ -1,6 +1,8 @@
 const SUCCESS_RECORD_CACHE_KEY = 'ATTENDANCE_SUCCESS_RECORDS'
 const MAX_SUCCESS_RECORDS = 200
 
+import { normalizeInScope } from '@/utils/inScope.js'
+
 function readRecords() {
   try {
     const raw = uni.getStorageSync(SUCCESS_RECORD_CACHE_KEY)
@@ -42,6 +44,7 @@ function normalizeRecord(record = {}) {
     imgs: record.imgs || '',
     localImages,
     qrNo: record.qrNo || '',
+    inScope: normalizeInScope(record.inScope),
     source: record.source || 'unknown',
     saveTime: Date.now()
   }

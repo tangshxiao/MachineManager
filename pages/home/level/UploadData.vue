@@ -104,7 +104,7 @@ import API_ENDPOINTS from '@/config/api.js'
 import { saveCacheRecordWithPersistedImages } from '@/utils/offlineCache.js'
 import { saveSuccessRecord } from '@/utils/successRecordCache.js'
 import { getSelectedProjectIdForApi } from '@/utils/attendancePid.js'
-import { checkAttendanceInRange } from '@/utils/attendanceCheck.js'
+import { resolveAttendanceScope } from '@/utils/attendanceCheck.js'
 import { ensureDeviceInSelectedProject } from '@/utils/projectScopeCheck.js'
 import { scanBizQrCode } from '@/utils/scanBizQr.js'
 
@@ -719,8 +719,8 @@ export default {
 				 }
 				 
 				 // 在线状态，正常提交
-				 const inRange = await checkAttendanceInRange(submitData)
-				 if (!inRange) {
+				 const scopeResult = await resolveAttendanceScope(submitData)
+				 if (!scopeResult.allowed) {
 					 uni.hideLoading()
 					 return
 				 }
@@ -745,6 +745,7 @@ export default {
 					 imgs: submitData.imgs || '',
 					 localImages: this.images || [],
 					 qrNo: submitData.qrNo || this.qrNo || '',
+					 inScope: submitData.inScope,
 					 source: 'online'
 				 })
 				 

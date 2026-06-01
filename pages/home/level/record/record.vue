@@ -16,6 +16,9 @@
           </view>
         </view>
 
+        <view class="info-row info-row-scope">
+          <text :class="getInScopeTagClass(item.inScope)">{{ getInScopeLabel(item.inScope) }}</text>
+        </view>
         <view class="info-row">
           <text class="info-text">{{ item.deviceNo || item.deviceId || '-' }}</text>
         </view>
@@ -93,6 +96,11 @@
           </view>
           
           <view class="detail-item">
+            <text class="detail-label">打卡范围</text>
+            <text class="detail-value">{{ getInScopeLabel(currentDetail.inScope) }}</text>
+          </view>
+          
+          <view class="detail-item">
             <text class="detail-label">打卡类型</text>
             <text class="detail-value">{{ getStatusText(currentDetail.type) }}</text>
           </view>
@@ -145,7 +153,8 @@ import { saveSuccessRecord } from '@/utils/successRecordCache.js'
 import { getAllCacheRecords, markRecordUploaded, updateCacheRecord, isAwaitingUpload, getCachedRecordAddress } from '@/utils/offlineCache.js'
 import { ensureAddressForUpload } from '@/utils/locationAddress.js'
 import { ensureAttendanceSubmitPid } from '@/utils/attendancePid.js'
-import { checkAttendanceInRange } from '@/utils/attendanceCheck.js'
+import { resolveAttendanceScope } from '@/utils/attendanceCheck.js'
+import { getInScopeLabel, getInScopeTagClass, normalizeInScope, resolveInScopeFromRecord } from '@/utils/inScope.js'
 import { ensureDeviceInSelectedProject } from '@/utils/projectScopeCheck.js'
 
 export default {
@@ -323,6 +332,9 @@ export default {
       return type === 0 ? 'status-in' : 'status-out'
     },
 
+    getInScopeLabel,
+    getInScopeTagClass,
+
     getUploadStatusText(status) {
       const map = {
         pending: '未上传',
@@ -360,6 +372,7 @@ export default {
       }
       return {
         ...base,
+        inScope: resolveInScopeFromRecord(r),
         images: mergeImagesLikeOfflineRecord(base)
       }
     },
@@ -437,6 +450,7 @@ export default {
         lng: record.lng || '',
         lat: record.lat || '',
         imgs: record.imgs || '',
+        inScope: resolveInScopeFromRecord(record),
         localImages: Array.isArray(record.images) ? record.images : [],
         images: mergeImagesLikeOfflineRecord(record),
         sortTs: this.parseTimeToTs(record.time) || this.parseTimeToTs(record.createTime)
@@ -461,6 +475,7 @@ export default {
         lng: item.lng || '',
         lat: item.lat || '',
         imgs,
+        inScope: normalizeInScope(item.inScope),
         localImages,
         images: mergeImagesLikeOfflineRecord({ imgs, localImages, images: item.images }),
         sortTs: this.parseTimeToTs(item.time) || Number(item.saveTime || 0)
@@ -566,8 +581,8 @@ export default {
         if (!inSelectedProject) {
           throw new Error('当前设备不在选择项目内，请切换项目后重新打卡')
         }
-        const inRange = await checkAttendanceInRange(submitData)
-        if (!inRange) {
+        const scopeResult = await resolveAttendanceScope(submitData)
+        if (!scopeResult.allowed) {
           throw new Error('当前没有在打卡范围内')
         }
         await http.post(API_ENDPOINTS.ATTENDANCE_ADD_API, submitData, {
@@ -582,6 +597,7 @@ export default {
           lng: submitData.lng || rawData.lng || '',
           lat: submitData.lat || rawData.lat || '',
           imgs: submitData.imgs || rawData.imgs || '',
+          inScope: submitData.inScope,
           data: JSON.stringify(submitData),
           pid: submitData.pid,
           deviceId: submitData.deviceId || rawData.deviceId,
@@ -603,6 +619,7 @@ export default {
           imgs: submitData.imgs || rawData.imgs || '',
           localImages: rawData.images || [],
           qrNo: rawData.qrNo || submitData.qrNo || '',
+          inScope: submitData.inScope,
           source: 'record_reupload'
         })
 
@@ -728,6 +745,32 @@ page {
 
 .info-row {
   margin-bottom: 8rpx;
+}
+
+.info-row-scope {
+  margin-bottom: 10rpx;
+}
+
+.in-scope-tag {
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  line-height: 1.4;
+}
+
+.in-scope-in {
+  background-color: #E8F5E9;
+  color: #2E7D32;
+}
+
+.in-scope-out {
+  background-color: #FFF3E0;
+  color: #E65100;
+}
+
+.in-scope-unknown {
+  background-color: #F5F5F5;
+  color: #999999;
 }
 
 .info-text {

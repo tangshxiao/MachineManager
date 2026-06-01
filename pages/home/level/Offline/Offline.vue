@@ -56,7 +56,10 @@
             </view>
           </view>
           
-          <view class="time-text">{{ item.time }}</view>
+          <view class="time-text">
+            <text>{{ item.time }}</text>
+            <text :class="getInScopeTagClass(item.inScope)">{{ getInScopeLabel(item.inScope) }}</text>
+          </view>
 
           <view class="card-body">
             <image :src="item.imgUrl" mode="aspectFill" class="thumb-img"></image>
@@ -117,6 +120,11 @@
           </view>
           
           <view class="detail-item">
+            <text class="detail-label">打卡范围</text>
+            <text class="detail-value">{{ getInScopeLabel(currentDetail.inScope) }}</text>
+          </view>
+          
+          <view class="detail-item">
             <text class="detail-label">打卡类型</text>
             <text class="detail-value">{{ currentDetail.tag || '-' }}</text>
           </view>
@@ -174,7 +182,8 @@ import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
 import { saveSuccessRecord } from '@/utils/successRecordCache.js'
 import { ensureAddressForUpload } from '@/utils/locationAddress.js'
-import { checkAttendanceInRange } from '@/utils/attendanceCheck.js'
+import { resolveAttendanceScope } from '@/utils/attendanceCheck.js'
+import { getInScopeLabel, getInScopeTagClass, resolveInScopeFromRecord } from '@/utils/inScope.js'
 import { ensureDeviceInSelectedProject } from '@/utils/projectScopeCheck.js'
 
 export default {
@@ -288,6 +297,7 @@ export default {
           deviceNo: this.isValidDeviceText(record.deviceNo) ? record.deviceNo : '-',
           tag: record.tag || '未知',
           time: record.time || '',
+          inScope: resolveInScopeFromRecord(record),
           status: record.uploadStatus === 'corrupted'
             ? 'corrupted'
             : (record.uploadStatus === 'success' ? 'success' : 'normal'),
@@ -331,6 +341,9 @@ export default {
       if (tag === '进场') return 'tag-green';
       return 'tag-blue'; // 默认退场
     },
+
+    getInScopeLabel,
+    getInScopeTagClass,
     
     // 查看详情
     async goToDetail(item) {
@@ -383,6 +396,7 @@ export default {
         // GPS坐标：优先从 parsedData 读取，其次从 rawData 读取
         lng: parsedData.lng || rawData.lng || '',
         lat: parsedData.lat || rawData.lat || '',
+        inScope: resolveInScopeFromRecord({ ...rawData, ...parsedData }),
         images: rawData.images || (item.imgUrl ? [item.imgUrl] : [])
       };
       
@@ -671,8 +685,8 @@ export default {
           }
           
           // 提交数据
-          const inRange = await checkAttendanceInRange(submitData);
-          if (!inRange) {
+          const scopeResult = await resolveAttendanceScope(submitData);
+          if (!scopeResult.allowed) {
             markRecordUploaded(item.id, false, '当前没有在打卡范围内');
             failedCount++;
             continue;
@@ -690,6 +704,7 @@ export default {
             address: submitData.address || rawData.address || '',
             lng: submitData.lng || rawData.lng || '',
             lat: submitData.lat || rawData.lat || '',
+            inScope: submitData.inScope,
             data: JSON.stringify(submitData)
           });
           saveSuccessRecord({
@@ -705,6 +720,7 @@ export default {
             lat: submitData.lat || rawData.lat || '',
             imgs: submitData.imgs || rawData.imgs || '',
             qrNo: rawData.qrNo || submitData.qrNo || '',
+            inScope: submitData.inScope,
             source: 'offline_reupload'
           });
           successCount++;
@@ -929,6 +945,32 @@ export default {
   font-size: 24rpx;
   color: #999;
   margin-bottom: 20rpx;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.in-scope-tag {
+  font-size: 22rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 8rpx;
+  line-height: 1.4;
+}
+
+.in-scope-in {
+  background-color: #E8F5E9;
+  color: #2E7D32;
+}
+
+.in-scope-out {
+  background-color: #FFF3E0;
+  color: #E65100;
+}
+
+.in-scope-unknown {
+  background-color: #F5F5F5;
+  color: #999999;
 }
 
 .card-body {

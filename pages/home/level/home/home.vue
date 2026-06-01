@@ -75,6 +75,7 @@
 								<view class="record-time">
 									<image src="/static/icon_time_img.png" style="width: 22rpx; height: 22rpx; margin-right: 8rpx;"></image>
 									打卡时间{{ item.time || '' }}
+									<text :class="getInScopeTagClass(item.inScope)">{{ getInScopeLabel(item.inScope) }}</text>
 								</view>
 								<view class="record-address" v-if="item.address">
 									{{ item.address }}
@@ -131,7 +132,8 @@
 	import { markRecordUploaded, getCacheStats, getAwaitingUploadRecords } from '@/utils/offlineCache.js'
 	import { saveSuccessRecord } from '@/utils/successRecordCache.js'
 	import { ensureAddressForUpload } from '@/utils/locationAddress.js'
-	import { checkAttendanceInRange } from '@/utils/attendanceCheck.js'
+	import { resolveAttendanceScope } from '@/utils/attendanceCheck.js'
+	import { getInScopeLabel, getInScopeTagClass, resolveInScopeFromRecord } from '@/utils/inScope.js'
 	import { ensureDeviceInSelectedProject } from '@/utils/projectScopeCheck.js'
 	import { scanBizQrCode } from '@/utils/scanBizQr.js'
 
@@ -221,7 +223,10 @@
       const attendanceCachedRecords = this.getCachedList(HOME_ATTENDANCE_LIST_CACHE_KEY)
       const deviceCachedRecords = this.getCachedList(HOME_DEVICE_LIST_CACHE_KEY)
       if (attendanceCachedRecords.length > 0) {
-        this.attendanceList = attendanceCachedRecords
+        this.attendanceList = attendanceCachedRecords.map((item) => ({
+          ...item,
+          inScope: resolveInScopeFromRecord(item)
+        }))
       }
       if (deviceCachedRecords.length > 0) {
         this.deviceList = deviceCachedRecords
@@ -265,7 +270,10 @@
       const cachedRecords = this.getCachedList(HOME_ATTENDANCE_LIST_CACHE_KEY)
       if (!this.isOnline) {
         if (cachedRecords.length > 0) {
-          this.attendanceList = cachedRecords
+          this.attendanceList = cachedRecords.map((item) => ({
+            ...item,
+            inScope: resolveInScopeFromRecord(item)
+          }))
         }
         return
       }
@@ -275,7 +283,10 @@
           size: this.attendanceSize
         })
         const records = (res && res.records) || []
-        this.attendanceList = records
+        this.attendanceList = records.map((item) => ({
+          ...item,
+          inScope: resolveInScopeFromRecord(item)
+        }))
         if (records.length > 0) {
           this.saveAttendanceCache(records)
         }
@@ -285,7 +296,10 @@
       } catch (e) {
         console.error('获取最近打卡记录失败:', e)
         if (cachedRecords.length > 0) {
-          this.attendanceList = cachedRecords
+          this.attendanceList = cachedRecords.map((item) => ({
+            ...item,
+            inScope: resolveInScopeFromRecord(item)
+          }))
           return
         }
         if (e && typeof e === 'object' && e.code !== undefined && e.code !== 0) {
@@ -615,6 +629,9 @@
 	  }
 	  return 'user-card-Record-Component-btnt' // 默认灰色
 	},
+
+	getInScopeLabel,
+	getInScopeTagClass,
 	
 	// 检测网络状态
 	async checkNetworkStatus() {
@@ -758,8 +775,8 @@
 			continue
 		  }
 
-		  const inRange = await checkAttendanceInRange(submitData)
-		  if (!inRange) {
+		  const scopeResult = await resolveAttendanceScope(submitData)
+		  if (!scopeResult.allowed) {
 			markRecordUploaded(item.id, false, '当前没有在打卡范围内')
 			failedCount++
 			continue
@@ -786,6 +803,7 @@
 			imgs: submitData.imgs || rawData.imgs || '',
 			localImages: rawData.images || [],
 			qrNo: rawData.qrNo || submitData.qrNo || '',
+			inScope: submitData.inScope,
 			source: 'offline_reupload_home'
 		  })
 		  successCount++
@@ -961,6 +979,30 @@
 		font-size: 26rpx;
 		display: flex;
 		align-items: center;
+		flex-wrap: wrap;
+		gap: 12rpx;
+	}
+
+	.in-scope-tag {
+		font-size: 22rpx;
+		padding: 2rpx 12rpx;
+		border-radius: 8rpx;
+		line-height: 1.4;
+	}
+
+	.in-scope-in {
+		background-color: #E8F5E9;
+		color: #2E7D32;
+	}
+
+	.in-scope-out {
+		background-color: #FFF3E0;
+		color: #E65100;
+	}
+
+	.in-scope-unknown {
+		background-color: #F5F5F5;
+		color: #999999;
 	}
 
 	.record-address {

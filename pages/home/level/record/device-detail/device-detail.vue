@@ -50,6 +50,9 @@
               <view class="type-tag" :class="getRecordStatusClass(item.type)">
                 <text>{{ getRecordStatusText(item.type) }}</text>
               </view>
+              <view :class="getInScopeTagClass(item.inScope)">
+                <text>{{ getInScopeLabel(item.inScope) }}</text>
+              </view>
             </view>
           </view>
           
@@ -101,6 +104,11 @@
           </view>
           
           <view class="detail-item">
+            <text class="detail-label">打卡范围</text>
+            <text class="detail-value">{{ getInScopeLabel(currentDetail.inScope) }}</text>
+          </view>
+          
+          <view class="detail-item">
             <text class="detail-label">打卡类型</text>
             <text class="detail-value">{{ getRecordStatusText(currentDetail.type) }}</text>
           </view>
@@ -132,6 +140,7 @@
 <script>
 import http from '@/utils/request.js' 
 import API_ENDPOINTS from '@/config/api.js'
+import { getInScopeLabel, getInScopeTagClass, resolveInScopeFromRecord } from '@/utils/inScope.js'
 
 export default {
   data() {
@@ -373,9 +382,15 @@ export default {
         const records = (res && res.records) || []
         
         if (reset) {
-          this.list = records
+          this.list = records.map((item) => ({
+            ...item,
+            inScope: resolveInScopeFromRecord(item)
+          }))
         } else {
-          this.list = [...this.list, ...records]
+          this.list = [...this.list, ...records.map((item) => ({
+            ...item,
+            inScope: resolveInScopeFromRecord(item)
+          }))]
         }
         
         // 更新分页信息
@@ -469,7 +484,10 @@ export default {
         return `${lng}, ${lat}`
       }
       return '-'
-    }
+    },
+
+    getInScopeLabel,
+    getInScopeTagClass
   }
 }
 </script>
@@ -662,7 +680,32 @@ page {
 .ri-right {
   flex-shrink: 0;
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8rpx;
+}
+
+.in-scope-tag {
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.in-scope-in {
+  background-color: #E8F5E9;
+  color: #2E7D32;
+}
+
+.in-scope-out {
+  background-color: #FFF3E0;
+  color: #E65100;
+}
+
+.in-scope-unknown {
+  background-color: #F5F5F5;
+  color: #999999;
 }
 
 .type-tag {
