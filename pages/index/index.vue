@@ -52,7 +52,7 @@ export default {
 
       projects: [],
       pageNum: 1,
-      pageSize: 10,
+      pageSize: 1000000,
       hasMore: true
     }
   },

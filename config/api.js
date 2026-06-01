@@ -1,6 +1,6 @@
 // API接口配置文件
 
-const API_BASE_URL = 'https://machine.tool.zhishanglianpin.com/app';
+const API_BASE_URL = 'http://ceec.chidi.com.cn:9527/app';
 
 /** 接口域名，用于拼接后端返回的相对路径图片地址 */
 export function getApiOrigin() {

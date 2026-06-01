@@ -136,6 +136,7 @@
 	import { scanBizQrCode } from '@/utils/scanBizQr.js'
 
 	const HOME_DEVICE_LIST_CACHE_KEY = 'HOME_DEVICE_LIST_CACHE'
+	const HOME_ATTENDANCE_LIST_CACHE_KEY = 'HOME_ATTENDANCE_LIST_CACHE'
 	
 	export default {
   data() {
@@ -150,6 +151,7 @@
       deviceSize: 10,
       // 选择的项目 IDs
       selectedProjectIds: [],
+      selectedProjectIdsStr: '',
       // 网络提示相关
       showNetworkNotice: false,
       uploading: false,
@@ -176,19 +178,17 @@
   },
 
   mounted() {
+    this.syncSelectedProjectIdsFromStorage()
+    this.restoreHomeListsFromCache()
     this.loadAttendanceList()
     this.loadDeviceList()
   },
 
   onShow() {
     // 从本地存储读取选择的项目 IDs
-    const idsStr = uni.getStorageSync('selectedProjectIds') || ''
-    if (idsStr) {
-      this.selectedProjectIds = idsStr.split(',')
-      console.log('首页接收到的项目 IDs:', this.selectedProjectIds)
-      // 读取后可以清空，避免重复使用
-      // uni.removeStorageSync('selectedProjectIds')
-    }
+    this.syncSelectedProjectIdsFromStorage()
+    // 先恢复本地缓存，确保断网/重启后能立即显示
+    this.restoreHomeListsFromCache()
     // 刷新打卡记录和设备列表（重置到第一页，确保显示最新数据）
     this.attendanceCurrent = 1
     this.deviceCurrent = 1
@@ -204,7 +204,71 @@
       this.cacheStats = getCacheStats()
     },
 
+    syncSelectedProjectIdsFromStorage() {
+      const idsStr = uni.getStorageSync('selectedProjectIds') || ''
+      if (idsStr !== this.selectedProjectIdsStr) {
+        this.selectedProjectIdsStr = idsStr
+        this.selectedProjectIds = idsStr ? idsStr.split(',') : []
+      }
+    },
+
+    clearHomeListCache() {
+      uni.removeStorageSync(HOME_DEVICE_LIST_CACHE_KEY)
+      uni.removeStorageSync(HOME_ATTENDANCE_LIST_CACHE_KEY)
+    },
+
+    restoreHomeListsFromCache() {
+      const attendanceCachedRecords = this.getCachedList(HOME_ATTENDANCE_LIST_CACHE_KEY)
+      const deviceCachedRecords = this.getCachedList(HOME_DEVICE_LIST_CACHE_KEY)
+      if (attendanceCachedRecords.length > 0) {
+        this.attendanceList = attendanceCachedRecords
+      }
+      if (deviceCachedRecords.length > 0) {
+        this.deviceList = deviceCachedRecords
+      }
+    },
+
+    saveAttendanceCache(records = []) {
+      console.log('写入最近打卡缓存:', records)
+      uni.setStorageSync(HOME_ATTENDANCE_LIST_CACHE_KEY, JSON.stringify({
+        records,
+        cacheTime: Date.now(),
+        projectKey: this.selectedProjectIdsStr || ''
+      }))
+    },
+
+    saveDeviceCache(records = []) {
+      console.log('写入常用设备缓存:', records)
+      uni.setStorageSync(HOME_DEVICE_LIST_CACHE_KEY, JSON.stringify({
+        records,
+        cacheTime: Date.now(),
+        projectKey: this.selectedProjectIdsStr || ''
+      }))
+    },
+
+    getCachedList(cacheKey) {
+      try {
+        const cacheStr = uni.getStorageSync(cacheKey)
+        console.log('读取首页缓存原始值:', cacheKey, cacheStr)
+        if (!cacheStr) return []
+        const cache = typeof cacheStr === 'string' ? JSON.parse(cacheStr) : cacheStr
+        if (cache && Array.isArray(cache.records)) {
+          return cache.records
+        }
+      } catch (e) {
+        console.warn('读取首页缓存失败:', e)
+      }
+      return []
+    },
+
     async loadAttendanceList() {
+      const cachedRecords = this.getCachedList(HOME_ATTENDANCE_LIST_CACHE_KEY)
+      if (!this.isOnline) {
+        if (cachedRecords.length > 0) {
+          this.attendanceList = cachedRecords
+        }
+        return
+      }
       try {
         const res = await http.post(API_ENDPOINTS.ATTENDANCE_LIST_API, {
           current: this.attendanceCurrent,
@@ -212,11 +276,18 @@
         })
         const records = (res && res.records) || []
         this.attendanceList = records
+        if (records.length > 0) {
+          this.saveAttendanceCache(records)
+        }
         this.attendanceCurrent = (res && res.current) || this.attendanceCurrent
         this.attendanceSize = (res && res.size) || this.attendanceSize
         console.log('最近打卡记录 attendanceList:', this.attendanceList)
       } catch (e) {
         console.error('获取最近打卡记录失败:', e)
+        if (cachedRecords.length > 0) {
+          this.attendanceList = cachedRecords
+          return
+        }
         if (e && typeof e === 'object' && e.code !== undefined && e.code !== 0) {
           return
         }
@@ -232,15 +303,31 @@
     },
 
     async loadDeviceList() {
+      const cachedRecords = this.getCachedList(HOME_DEVICE_LIST_CACHE_KEY)
+      if (!this.isOnline) {
+        if (cachedRecords.length > 0) {
+          this.deviceList = cachedRecords
+        }
+        return
+      }
       try {
         // 获取项目ID
         const selectedProjectIds = uni.getStorageSync('selectedProjectIds');
         if (!selectedProjectIds) {
           console.error('未找到项目ID');
+          if (cachedRecords.length > 0) {
+            this.deviceList = cachedRecords
+          }
           return;
         }
-        // 取第一个项目ID作为pid
-        const pid = selectedProjectIds.split(',')[0];
+        // 项目ID存在即可继续请求设备列表
+        const projectId = selectedProjectIds.split(',')[0]
+        if (!projectId) {
+          if (cachedRecords.length > 0) {
+            this.deviceList = cachedRecords
+          }
+          return
+        }
         
         const res = await http.post(API_ENDPOINTS.DEVICE_LIST_API, {
           sort: 0,
@@ -250,15 +337,18 @@
         const records = (res && res.records) || []
         this.deviceList = records
         // 缓存首页设备列表 records，供后续离线/快速读取使用
-        uni.setStorageSync(HOME_DEVICE_LIST_CACHE_KEY, JSON.stringify({
-          records,
-          cacheTime: Date.now()
-        }))
+        if (records.length > 0) {
+          this.saveDeviceCache(records)
+        }
         this.deviceCurrent = (res && res.current) || this.deviceCurrent
         this.deviceSize = (res && res.size) || this.deviceSize
         console.log('常用设备 deviceList:', this.deviceList)
       } catch (e) {
         console.error('获取常用设备失败:', e)
+        if (cachedRecords.length > 0) {
+          this.deviceList = cachedRecords
+          return
+        }
         // request.js 已提示：接口返回错误(msg)、无网络(当前无网络，请检查网络连接)
         if (e && typeof e === 'object' && e.code !== undefined && e.code !== 0) {
           return // 接口返回错误，request.js 已显示 msg
@@ -532,7 +622,12 @@
 		uni.getNetworkType({
 		  success: (res) => {
 			const isOnline = res.networkType !== 'none' && res.networkType !== 'unknown'
+			const prevOnline = this.isOnline
 			this.isOnline = isOnline
+			if (prevOnline !== isOnline) {
+			  this.loadAttendanceList()
+			  this.loadDeviceList()
+			}
 			// 重新获取统计数据，确保提示文案与缓存一致
 			this.refreshCacheStats()
 			const hasPending = this.cacheStats.pending > 0

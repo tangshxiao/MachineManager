@@ -73,6 +73,8 @@ export default {
 			  console.log('用户确认重新选择项目')
 			  // 清除选择的项目 IDs
 			  uni.removeStorageSync('selectedProjectIds')
+			  uni.removeStorageSync('HOME_DEVICE_LIST_CACHE')
+			  uni.removeStorageSync('HOME_ATTENDANCE_LIST_CACHE')
 			  // 跳转到选择项目页面
 			  uni.reLaunch({
 				url: '/pages/index/index'
