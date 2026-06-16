@@ -136,6 +136,7 @@
 	import { getInScopeLabel, getInScopeTagClass, resolveInScopeFromRecord } from '@/utils/inScope.js'
 	import { ensureDeviceInSelectedProject } from '@/utils/projectScopeCheck.js'
 	import { scanBizQrCode } from '@/utils/scanBizQr.js'
+	import { fetchDeviceStatusOptions, getDeviceStatusLabel } from '@/utils/deviceStatusDict.js'
 
 	const HOME_DEVICE_LIST_CACHE_KEY = 'HOME_DEVICE_LIST_CACHE'
 	const HOME_ATTENDANCE_LIST_CACHE_KEY = 'HOME_ATTENDANCE_LIST_CACHE'
@@ -182,6 +183,7 @@
   mounted() {
     this.syncSelectedProjectIdsFromStorage()
     this.restoreHomeListsFromCache()
+    this.loadDeviceStatusOptions()
     this.loadAttendanceList()
     this.loadDeviceList()
   },
@@ -191,6 +193,7 @@
     this.syncSelectedProjectIdsFromStorage()
     // 先恢复本地缓存，确保断网/重启后能立即显示
     this.restoreHomeListsFromCache()
+    this.loadDeviceStatusOptions()
     // 刷新打卡记录和设备列表（重置到第一页，确保显示最新数据）
     this.attendanceCurrent = 1
     this.deviceCurrent = 1
@@ -204,6 +207,10 @@
   methods: {
     refreshCacheStats() {
       this.cacheStats = getCacheStats()
+    },
+
+    async loadDeviceStatusOptions() {
+      await fetchDeviceStatusOptions()
     },
 
     syncSelectedProjectIdsFromStorage() {
@@ -604,30 +611,26 @@
 	  })
 	},
 	
-	// 获取状态文字：0进场 1在用 2维修 3退场
+	// 获取状态文字
 	getStatusText(type) {
-	  const statusMap = {
-		0: '进场',
-		1: '在用',
-		2: '维修',
-		3: '退场'
-	  }
-	  return statusMap[type] || '未知'
+	  return getDeviceStatusLabel(type)
 	},
 	
 	// 获取状态按钮样式类
 	getStatusButtonClass(type) {
-	  // 0进场-蓝色, 1在用-绿色, 2维修-橙色, 3退场-灰色
-	  if (type === 0) {
-		return 'user-card-Record-Component-btn' // 进场-蓝色
-	  } else if (type === 1) {
-		return 'user-card-Record-Component-btn-using' // 在用-绿色
-	  } else if (type === 2) {
-		return 'user-card-Record-Component-btn-maintenance' // 维修-橙色
-	  } else if (type === 3) {
-		return 'user-card-Record-Component-btnt' // 退场-灰色
+	  const status = String(type)
+	  if (status === '0') {
+		return 'user-card-Record-Component-btn'
+	  } else if (status === '1') {
+		return 'user-card-Record-Component-btn-using'
+	  } else if (status === '2') {
+		return 'user-card-Record-Component-btn-maintenance'
+	  } else if (status === '3') {
+		return 'user-card-Record-Component-btnt'
+	  } else if (status === '4') {
+		return 'user-card-Record-Component-btn-maintenance'
 	  }
-	  return 'user-card-Record-Component-btnt' // 默认灰色
+	  return 'user-card-Record-Component-btnt'
 	},
 
 	getInScopeLabel,

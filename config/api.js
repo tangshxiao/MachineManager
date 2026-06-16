@@ -1,6 +1,8 @@
 // API接口配置文件
-
+// 正式
 const API_BASE_URL = 'http://ceec.chidi.com.cn:9527/app';
+// 测试
+// const API_BASE_URL = 'https://machine.tool.zhishanglianpin.com/app';
 
 /** 接口域名，用于拼接后端返回的相对路径图片地址 */
 export function getApiOrigin() {
@@ -20,7 +22,7 @@ export const API_ENDPOINTS = {
   ATTENDANCE_ADD_API: `${API_BASE_URL}/attendance/add`,
   DEVICE_LIST_API: `${API_BASE_URL}/device/list`,
   DEVICE_ADD_API: `${API_BASE_URL}/device/add`,
-  DEVICE_DETAILS_API: `${API_BASE_URL}/device/details`,
+  DEVICE_DETAILS_API: `${API_BASE_URL}/device/details`, 
   DEVICE_QR_DETAILS_API: `${API_BASE_URL}/device/qrDetails`,
   DEVICE_BIND_QRCODE_API: `${API_BASE_URL}/device/bindQrcode`,
   UPLOAD_API: `${API_BASE_URL}/upload/upload`,

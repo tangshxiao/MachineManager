@@ -96,17 +96,14 @@
 import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
 import { scanBizQrCode } from '@/utils/scanBizQr.js'
+import { fetchDeviceStatusOptions, getDeviceStatusLabel } from '@/utils/deviceStatusDict.js'
 
 export default {
   data() {
     return {
       keyword: "",        // 搜索关键字
       currentTab: "all",  // 当前分类
-      tabs: [
-        { label: "全部", value: "all" },
-        { label: "在用", value: "在用" },
-        { label: "维修", value: "维修" }
-      ],
+      tabs: [],
       // 设备列表（后端接口返回）
       deviceList: [],
       // 分页参数
@@ -121,11 +118,12 @@ export default {
 		  ],
     };
   },
-  onShow() {
+  async onShow() {
     // 从进/退场页返回时自动刷新列表；首进页面也走这里
     if (!this.hasInited) {
       this.hasInited = true;
     }
+    await this.loadStatusTabs();
     this.deviceCurrent = 1;
     this.loadDeviceList(true);
   },
@@ -176,6 +174,23 @@ export default {
 	  }
 	  await this.loadDeviceList(false);
     },
+	async loadStatusTabs() {
+	  try {
+		const options = await fetchDeviceStatusOptions()
+		const filtered = options.filter(item => item.label !== '进场' && item.label !== '退场')
+		this.tabs = [
+		  { label: '全部', value: 'all' },
+		  ...filtered
+		]
+	  } catch (e) {
+		this.tabs = [
+		  { label: '全部', value: 'all' },
+		  { label: '在用', value: '1' },
+		  { label: '维修', value: '2' },
+		  { label: '停工', value: '4' }
+		]
+	  }
+	},
 	async loadDeviceList(reset = false) {
 	  if (this.loading) return;
 	  
@@ -186,11 +201,7 @@ export default {
 	  this.loading = true;
 	  
 	  try {
-		const statusMap = {
-		  '在用': 1,
-		  '维修': 2
-		};
-		const status = statusMap[this.currentTab];
+		const status = this.currentTab !== 'all' ? this.currentTab : undefined;
 		const nextPage = reset ? 1 : this.deviceCurrent + 1;
 		
 		// 获取项目ID
@@ -202,9 +213,6 @@ export default {
 		  }); 
 		  return;
 		}
-		// 取第一个项目ID作为pid
-		const pid = selectedProjectIds.split(',')[0];
-		
 		const params = {
 		  sort: 0,
 		  current: nextPage,
@@ -269,23 +277,17 @@ export default {
 	},
 	// 获取状态文字
 	getStatusText(status) {
-	  const statusMap = {
-		0: '进场',
-		1: '在用',
-		2: '维修',
-		3: '退场'
-	  };
-	  return statusMap[status] || '';
+	  return getDeviceStatusLabel(status)
 	},
 	// 获取状态样式类
 	getStatusClass(status) {
-	  const statusMap = {
-		0: 'entry',      // 进场
-		1: 'using',      // 在用
-		2: 'maintenance', // 维修
-		3: 'exit'        // 退场
-	  };
-	  return statusMap[status] || '';
+	  const key = String(status)
+	  if (key === '0') return 'entry'
+	  if (key === '1') return 'using'
+	  if (key === '2') return 'maintenance'
+	  if (key === '3') return 'exit'
+	  if (key === '4') return 'maintenance'
+	  return 'entry'
 	},
 	// 跳转到设备详情
 	goToDeviceDetail(item) {

@@ -156,6 +156,7 @@ import { ensureAttendanceSubmitPid } from '@/utils/attendancePid.js'
 import { resolveAttendanceScope } from '@/utils/attendanceCheck.js'
 import { getInScopeLabel, getInScopeTagClass, normalizeInScope, resolveInScopeFromRecord } from '@/utils/inScope.js'
 import { ensureDeviceInSelectedProject } from '@/utils/projectScopeCheck.js'
+import { getDeviceStatusLabel, getRecordStatusClass } from '@/utils/deviceStatusDict.js'
 
 export default {
   data() { 
@@ -316,20 +317,12 @@ export default {
     
     // 获取状态文本
     getStatusText(type) {
-      // type: 0进场 1在用 2维修 3退场
-      const statusMap = {
-        0: '进场',
-        1: '在用',
-        2: '维修',
-        3: '退场'
-      }
-      return statusMap[type] || '未知'
+      return getDeviceStatusLabel(type)
     },
     
     // 获取状态样式类
     getStatusClass(type) {
-      // 0进场-绿色, 1离场-蓝色
-      return type === 0 ? 'status-in' : 'status-out'
+      return getRecordStatusClass(type)
     },
 
     getInScopeLabel,

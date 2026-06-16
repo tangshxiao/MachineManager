@@ -141,6 +141,7 @@
 import http from '@/utils/request.js' 
 import API_ENDPOINTS from '@/config/api.js'
 import { getInScopeLabel, getInScopeTagClass, resolveInScopeFromRecord } from '@/utils/inScope.js'
+import { fetchDeviceStatusOptions, getDeviceStatusLabel, getDeviceStatusClass, getRecordStatusClass as getRecordStatusClassByValue } from '@/utils/deviceStatusDict.js'
 
 export default {
   data() {
@@ -182,6 +183,7 @@ export default {
     }
   },
   onLoad(options) {
+    fetchDeviceStatusOptions()
     if (options.id) {
       this.deviceId = options.id
       this.getDeviceInfo()
@@ -294,46 +296,24 @@ export default {
       }
     },
     
-    // 获取状态文本：0进场 1在用 2维修 3退场
+    // 获取状态文本
     getStatusText(status) {
-      const statusMap = {
-        0: '进场',
-        1: '在用',
-        2: '维修',
-        3: '退场'
-      }
-      return statusMap[status] || '未知'
+      return getDeviceStatusLabel(status)
     },
     
     // 获取状态样式类
     getStatusClass(status) {
-      // 0进场-蓝色, 1在用-绿色, 2维修-红色, 3退场-黄色
-      if (status === 0) return 'status-entry'      // 进场-蓝色
-      if (status === 1) return 'status-using'     // 在用-绿色
-      if (status === 2) return 'status-maintenance' // 维修-红色
-      if (status === 3) return 'status-exit'      // 退场-黄色
-      return 'status-entry'
+      return getDeviceStatusClass(status)
     },
     
-    // 获取打卡记录类型文本：0进场 1在用 2维修 3退场
+    // 获取打卡记录类型文本
     getRecordStatusText(type) {
-      const statusMap = {
-        0: '进场',
-        1: '在用',
-        2: '维修',
-        3: '退场'
-      }
-      return statusMap[type] || '未知'
+      return getDeviceStatusLabel(type)
     },
     
     // 获取打卡记录类型样式类
     getRecordStatusClass(type) {
-      // 0进场-蓝色, 1在用-绿色, 2维修-红色, 3退场-黄色
-      if (type === 0) return 'tag-entry'      // 进场-蓝色
-      if (type === 1) return 'tag-using'      // 在用-绿色
-      if (type === 2) return 'tag-maintenance' // 维修-红色
-      if (type === 3) return 'tag-exit'       // 退场-黄色
-      return 'tag-entry'
+      return getRecordStatusClassByValue(type)
     },
     
     // 格式化时间

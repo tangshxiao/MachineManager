@@ -27,9 +27,9 @@
 				</view>
 			</view>
 			<view class="Content-text">打卡类型:
-				<picker class="Content-picker" mode="selector" :range="checkInTypes" @change="onCheckInTypeChange">
+				<picker class="Content-picker" mode="selector" :range="checkInTypes" range-key="label" :value="checkInTypeIndex" @change="onCheckInTypeChange">
 					<view class="Content-picker-sele" style="display:flex;justify-content:space-between;align-items:center;width:100%;">
-						<view class="Content-text-left-a">{{message}}</view>
+						<view class="Content-text-left-a">{{message || '请选择打卡类型'}}</view>
 						<image src="/static/icon_jt_xx.png" style="width:32rpx; height: 32rpx;flex-shrink:0;margin-right:16rpx;"></image>
 					</view>
 				</picker>
@@ -119,8 +119,9 @@ export default {
 			MAX_PHOTOS,
 			shebei: "--",
 			shengchan: "--",
-			message: "在用",
-			checkInTypes: ["在用", "维修"],
+			message: "",
+			checkInTypes: [],
+			checkInTypeIndex: -1,
 			enterTime: "",
 			person: "老周",
 			images: [],
@@ -140,6 +141,7 @@ export default {
 	  
 	onLoad(options) {
 		this.getEnterTime();
+		this.loadCheckInTypes();
 		if (options && options.result) {
 			const resultStr = decodeURIComponent(options.result);
 			this.handleScanData(resultStr);
@@ -196,7 +198,9 @@ export default {
 		// 打卡类型选择变化
 		onCheckInTypeChange(e) {
 			const index = e.detail.value;
-			this.message = this.checkInTypes[index];
+			this.checkInTypeIndex = index;
+			const selected = this.checkInTypes[index];
+			this.message = selected ? selected.label : '';
 		},
 
 		// 重新扫码
@@ -206,6 +210,40 @@ export default {
 					this.handleScanData(text);
 				})
 				.catch(() => {});
+		},
+
+		async loadCheckInTypes() {
+			try {
+				const res = await http.post(API_ENDPOINTS.DICT_LIST_API, {
+					code: 'device_status'
+				})
+				const records = Array.isArray(res) ? res : ((res && (res.records || res.data || res.list)) || [])
+				const options = records
+					.map(item => ({
+						label: item.label || item.dictLabel || item.name || '',
+						value: item.value ?? item.id ?? ''
+					}))
+					.filter(item => item.label && item.label !== '进场' && item.label !== '退场')
+				this.checkInTypes = options
+				if (!this.checkInTypes.length) {
+					this.checkInTypes = [
+						{ label: '在用', value: '1' },
+						{ label: '维修', value: '2' },
+						{ label: '停工', value: '4' }
+					]
+				}
+				this.checkInTypeIndex = this.checkInTypes.length > 0 ? 0 : -1
+				this.message = this.checkInTypes[0] ? this.checkInTypes[0].label : ''
+			} catch (e) {
+				console.error('加载打卡类型字典失败:', e)
+				this.checkInTypes = [
+					{ label: '在用', value: '1' },
+					{ label: '维修', value: '2' },
+					{ label: '停工', value: '4' }
+				]
+				this.checkInTypeIndex = 0
+				this.message = this.checkInTypes[0].label
+			}
 		},
 
 		// 处理扫码数据
@@ -366,7 +404,7 @@ export default {
 		 
 		// 获取位置信息（支持离线GPS定位）
 		async getLocation() {
-			return new Promise((resolve, reject) => {
+			return new Promise((resolve) => {
 				// 尝试获取GPS定位（不依赖网络）
 				// 注意：GPS定位理论上不依赖网络，但首次定位可能需要更长时间
 				uni.getLocation({
@@ -488,7 +526,7 @@ export default {
 				 return;
 			 }
 			 
-			 if (!this.message || (this.message !== '在用' && this.message !== '维修')) {
+			 if (!this.message) {
 				 uni.showToast({
 					 title: '请选择打卡类型',
 					 icon: 'none'
@@ -536,8 +574,9 @@ export default {
 					 console.warn('图片上传失败，将在离线数据中保存图片路径', imgError);
 				 }
 				 
-				 // 3. 确定类型：1在用 2维修
-				 const type = this.message === "在用" ? 1 : 2;
+				 // 3. 确定类型：使用字典 value
+				 const selectedType = this.checkInTypes[this.checkInTypeIndex] || this.checkInTypes.find(item => item.label === this.message);
+				 const type = selectedType && selectedType.value !== '' ? Number(selectedType.value) : 0;
 				 
 				 // 4. 打卡时间：优先使用定位成功那一刻的时间（gpsObtainTime），否则用进入页面时间（enterTime）
 				 let timeStr = (this.gpsObtainTime && this.lng && this.lat) ? this.gpsObtainTime : this.enterTime;
@@ -552,7 +591,7 @@ export default {
 					 deviceId: this.deviceId,
 					 deviceNo: this.shebei || "", // 序号
 					 qrNo: this.qrNo || "",
-					 type: type, // 1在用 2维修
+					 type: type,
 					 pid: getSelectedProjectIdForApi(),
 					 address: this.address || "",
 					 lng: this.lng || "",
@@ -792,7 +831,7 @@ export default {
 					 const errorSubmitData = {
 						 deviceId: this.deviceId,
 						 deviceNo: this.shebei || "",
-						 type: this.message === "在用" ? 1 : 2, // 1在用 2维修
+						 type: Number((this.checkInTypes[this.checkInTypeIndex] || this.checkInTypes.find(item => item.label === this.message) || {}).value || 0),
 						 pid: getSelectedProjectIdForApi(),
 						 address: this.address || "",
 						 lng: this.lng || "", // 确保包含经纬度
