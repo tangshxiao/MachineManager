@@ -1,8 +1,11 @@
 // API接口配置文件
 // 正式
-const API_BASE_URL = 'http://ceec.chidi.com.cn:9527/app';
+//const API_BASE_URL = 'http://ceec.chidi.com.cn:9527/app';
 // 测试
-// const API_BASE_URL = 'https://machine.tool.zhishanglianpin.com/app';
+ const API_BASE_URL = 'https://machine.tool.zhishanglianpin.com/app';
+
+export const QQ_MAP_GEOCODER_URL = 'https://apis.map.qq.com/ws/geocoder/v1/'
+export const QQ_MAP_GEOCODER_KEY = 'RDHBZ-5RAYI-4UGGB-U5IIX-LRRRS-RQFMH'
 
 /** 接口域名，用于拼接后端返回的相对路径图片地址 */
 export function getApiOrigin() {
@@ -30,6 +33,8 @@ export const API_ENDPOINTS = {
   DICT_LIST_API: `${API_BASE_URL}/dict/list`,
   REPORT_SAVE_API: `${API_BASE_URL}/report/save`,
   PROJECT_BIND_API: `${API_BASE_URL}/project/bind`,
+  QQ_MAP_GEOCODER_URL,
+  QQ_MAP_GEOCODER_KEY,
 };
 
 export default API_ENDPOINTS;

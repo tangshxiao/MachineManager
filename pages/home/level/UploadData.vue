@@ -101,6 +101,7 @@
 <script>
 import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
+import { QQ_MAP_GEOCODER_URL, QQ_MAP_GEOCODER_KEY } from '@/config/api.js'
 import { saveCacheRecordWithPersistedImages } from '@/utils/offlineCache.js'
 import { saveSuccessRecord } from '@/utils/successRecordCache.js'
 import { getSelectedProjectIdForApi } from '@/utils/attendancePid.js'
@@ -429,7 +430,12 @@ export default {
 						// 尝试逆地理编码获取地址（需要网络，失败也不影响GPS坐标）
 						// 注意：即使离线，GPS坐标已经获取到了，可以正常缓存
 						uni.request({
-							url: `https://apis.map.qq.com/ws/geocoder/v1/?location=${res.latitude},${res.longitude}&key=OB4BZ-D4W3U-B7VVO-4PJWW-6TKDJ-WPB77&get_poi=1`,
+							url: QQ_MAP_GEOCODER_URL,
+							data: {
+								location: `${res.latitude},${res.longitude}`,
+								key: QQ_MAP_GEOCODER_KEY,
+								get_poi: 1
+							},
 							timeout: 5000, // 地址查询5秒超时
 							success: (addrRes) => {
 								if (addrRes.data && addrRes.data.result) {

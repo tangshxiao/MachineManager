@@ -130,7 +130,7 @@
 </template>
 <script>
 import http from '@/utils/request.js'
-import API_ENDPOINTS from '@/config/api.js'
+import API_ENDPOINTS, { QQ_MAP_GEOCODER_URL, QQ_MAP_GEOCODER_KEY } from '@/config/api.js'
 import { saveCacheRecord } from '@/utils/offlineCache.js'
 
 	//模拟序号
@@ -530,7 +530,12 @@ export default {
 			
 			// 逆地理编码获取地址
 			uni.request({
-			  url: `https://apis.map.qq.com/ws/geocoder/v1/?location=${res.latitude},${res.longitude}&key=OB4BZ-D4W3U-B7VVO-4PJWW-6TKDJ-WPB77&get_poi=1`,
+			  url: QQ_MAP_GEOCODER_URL,
+			  data: {
+				location: `${res.latitude},${res.longitude}`,
+				key: QQ_MAP_GEOCODER_KEY,
+				get_poi: 1
+			  },
 			  success: (addrRes) => {
 				if (addrRes.data && addrRes.data.result) {
 				  this.address = addrRes.data.result.address || '';

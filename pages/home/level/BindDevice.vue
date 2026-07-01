@@ -122,7 +122,7 @@
 				</view>
 			</view>
 			<view class="photo-hint">
-				必填，至少{{ MIN_PHOTOS }}张现场照片，仅支持拍照，最多{{ MAX_PHOTOS }}张（已选 {{ images.length }} 张）。照片必须包含机具整体和二维码
+				必填，至少{{ MIN_PHOTOS }}张现场照片，支持拍照或从相册选择，最多{{ MAX_PHOTOS }}张（已选 {{ images.length }} 张）。照片必须包含机具整体和二维码
 			</view>
 		</view>
 
@@ -138,6 +138,7 @@
 <script>
 import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
+import { QQ_MAP_GEOCODER_URL, QQ_MAP_GEOCODER_KEY } from '@/config/api.js'
 import api from '@/services/api.js'
 
 const MIN_PHOTOS = 2
@@ -461,8 +462,15 @@ export default {
 						
 						// 逆地理编码获取地址
 						uni.request({
-							url: `https://apis.map.qq.com/ws/geocoder/v1/?location=${res.latitude},${res.longitude}&key=OB4BZ-D4W3U-B7VVO-4PJWW-6TKDJ-WPB77&get_poi=1`,
+							url: QQ_MAP_GEOCODER_URL,
+							data: {
+								location: `${res.latitude},${res.longitude}`,
+								key: QQ_MAP_GEOCODER_KEY,
+								get_poi: 1
+							},
 							success: (addrRes) => {
+								
+									console.error('获取位置:',addrRes.data)
 								if (addrRes.data && addrRes.data.result) {
 									const address = addrRes.data.result.address || ''
 									if (address) {
@@ -474,6 +482,7 @@ export default {
 							fail: () => {
 								// 地址获取失败，只显示坐标
 								this.address = ''
+								console.error('获取位置失败:地址获取失败，只显示坐标')
 							}
 						})
 					},
@@ -497,7 +506,7 @@ export default {
 			uni.chooseImage({
 				count: remain,
 				sizeType: ['original', 'compressed'],
-				sourceType: ['camera'],
+				sourceType: ['album', 'camera'],
 				success: (res) => {
 					const paths = res.tempFilePaths || []
 					const validExt = ['.jpg', '.jpeg', '.png']
@@ -513,6 +522,19 @@ export default {
 					}
 					this.images = this.images.concat(newImages).slice(0, MAX_PHOTOS)
 				}
+			})
+		},
+
+		checkNetworkBeforeBind() {
+			return new Promise((resolve) => {
+				uni.getNetworkType({
+					success: (res) => {
+						resolve(res.networkType !== 'none')
+					},
+					fail: () => {
+						resolve(false)
+					}
+				})
 			})
 		},
 
@@ -642,7 +664,7 @@ export default {
 				console.log('提交绑定设备数据:', submitData)
 
 				// 调用绑定设备的API接口
-				const res = await http.post(API_ENDPOINTS.DEVICE_BIND_QRCODE_API, submitData, {
+				await http.post(API_ENDPOINTS.DEVICE_BIND_QRCODE_API, submitData, {
 					header: {
 						'Content-Type': 'application/json'
 					}
