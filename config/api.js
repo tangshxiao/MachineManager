@@ -1,9 +1,11 @@
 // API接口配置文件
 // 正式
-//const API_BASE_URL = 'http://ceec.chidi.com.cn:9527/app';
+const API_BASE_URL = 'http://ceec.chidi.com.cn:9527/app';
 // 测试
- const API_BASE_URL = 'https://machine.tool.zhishanglianpin.com/app';
+ // const API_BASE_URL = 'https://machine.tool.zhishanglianpin.com/app';
 
+export const TIANDITU_GEOCODER_URL = 'https://api.tianditu.gov.cn/geocoder'
+export const TIANDITU_GEOCODER_KEY = '11f6f9b0f31e532ebfdba06dc8fb36ef'
 export const QQ_MAP_GEOCODER_URL = 'https://apis.map.qq.com/ws/geocoder/v1/'
 export const QQ_MAP_GEOCODER_KEY = 'RDHBZ-5RAYI-4UGGB-U5IIX-LRRRS-RQFMH'
 

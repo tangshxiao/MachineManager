@@ -138,8 +138,8 @@
 <script>
 import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
-import { QQ_MAP_GEOCODER_URL, QQ_MAP_GEOCODER_KEY } from '@/config/api.js'
 import api from '@/services/api.js'
+import { reverseGeocodeByLngLat } from '@/utils/locationAddress.js'
 
 const MIN_PHOTOS = 2
 const MAX_PHOTOS = 5
@@ -454,37 +454,20 @@ export default {
 			try {
 				uni.getLocation({
 					type: 'gcj02',
-					highAccuracy: true,// 开启高精度（GPS 硬件）
-					success: (res) => {
+					highAccuracy: true,// 开启高精度（GPS 硬件)
+					success: async (res) => {
 						this.lng = String(res.longitude)
 						this.lat = String(res.latitude)
 						this.currentLocation = `${this.lat},${this.lng}`
 						
-						// 逆地理编码获取地址
-						uni.request({
-							url: QQ_MAP_GEOCODER_URL,
-							data: {
-								location: `${res.latitude},${res.longitude}`,
-								key: QQ_MAP_GEOCODER_KEY,
-								get_poi: 1
-							},
-							success: (addrRes) => {
-								
-									console.error('获取位置:',addrRes.data)
-								if (addrRes.data && addrRes.data.result) {
-									const address = addrRes.data.result.address || ''
-									if (address) {
-										this.address = address
-										this.currentLocation = `${address} (${this.lat},${this.lng})`
-									}
-								}
-							},
-							fail: () => {
-								// 地址获取失败，只显示坐标
-								this.address = ''
-								console.error('获取位置失败:地址获取失败，只显示坐标')
-							}
-						})
+						const address = await reverseGeocodeByLngLat(this.lng, this.lat)
+						if (address) {
+							this.address = address
+							this.currentLocation = `${address} (${this.lat},${this.lng})`
+						} else {
+							this.address = ''
+							console.error('逆地理编码无结果，回退显示坐标')
+						}
 					},
 					fail: (err) => {
 						console.error('获取位置失败:', err)

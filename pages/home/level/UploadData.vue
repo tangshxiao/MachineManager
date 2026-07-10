@@ -101,8 +101,8 @@
 <script>
 import http from '@/utils/request.js'
 import API_ENDPOINTS from '@/config/api.js'
-import { QQ_MAP_GEOCODER_URL, QQ_MAP_GEOCODER_KEY } from '@/config/api.js'
 import { saveCacheRecordWithPersistedImages } from '@/utils/offlineCache.js'
+import { reverseGeocodeByLngLat } from '@/utils/locationAddress.js'
 import { saveSuccessRecord } from '@/utils/successRecordCache.js'
 import { getSelectedProjectIdForApi } from '@/utils/attendancePid.js'
 import { resolveAttendanceScope } from '@/utils/attendanceCheck.js'
@@ -414,7 +414,7 @@ export default {
 					geocode: false, // 禁用逆地理编码，避免依赖网络
 					highAccuracy: true,// 开启高精度（GPS 硬件）
 					timeout: 20000, // 20秒超时（离线时GPS可能需要更长时间，特别是首次定位）
-					success: (res) => {
+					success: async (res) => {
 						// GPS定位成功，先保存经纬度（不依赖网络）
 						if (res.longitude && res.latitude) {
 							this.lng = String(res.longitude);
@@ -429,27 +429,17 @@ export default {
 						
 						// 尝试逆地理编码获取地址（需要网络，失败也不影响GPS坐标）
 						// 注意：即使离线，GPS坐标已经获取到了，可以正常缓存
-						uni.request({
-							url: QQ_MAP_GEOCODER_URL,
-							data: {
-								location: `${res.latitude},${res.longitude}`,
-								key: QQ_MAP_GEOCODER_KEY,
-								get_poi: 1
-							},
-							timeout: 5000, // 地址查询5秒超时
-							success: (addrRes) => {
-								if (addrRes.data && addrRes.data.result) {
-									this.address = addrRes.data.result.address || '';
-								}
-								resolve({ lng: this.lng, lat: this.lat, address: this.address });
-							},
-							fail: () => {
-								// 网络请求失败不影响，GPS坐标已经获取到了
-								console.log('逆地理编码失败（可能离线），但GPS坐标已获取，可以正常缓存');
-								this.address = '';
-								resolve({ lng: this.lng, lat: this.lat, address: '' });
+						try {
+							const address = await reverseGeocodeByLngLat(this.lng, this.lat)
+							this.address = address || ''
+							if (!address) {
+								console.log('逆地理编码无结果（可能离线），但GPS坐标已获取，可以正常缓存')
 							}
-						});
+						} catch (geoErr) {
+							console.warn('逆地理编码异常（可能离线），但GPS坐标已获取，可以正常缓存', geoErr)
+							this.address = ''
+						}
+						resolve({ lng: this.lng, lat: this.lat, address: this.address });
 					},
 					fail: (err) => {
 						console.error('GPS定位失败:', err);
