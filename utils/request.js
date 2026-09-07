@@ -1,5 +1,10 @@
 // 通用网络请求工具（uni-app）
 import logger from './logger.js'
+import {
+  RSA_ENABLED,
+  encryptRequestData,
+  decryptResponsePayload
+} from './rsa.js'
 
 // 统一无网络提示文案
 const NO_NETWORK_MSG = '当前无网络，请检查网络连接'
@@ -45,11 +50,20 @@ const request = (options = {}) => {
   const token = uni.getStorageSync('token') || ''
 
   // 处理 Content-Type，优先使用传入的 header 中的 Content-Type
-  const contentType = header['Content-Type'] || 'application/x-www-form-urlencoded'
+  const contentType = header['Content-Type'] || header['content-type'] || 'application/x-www-form-urlencoded'
   let requestData = data
 
-  // 如果是 application/json，需要序列化数据
-  if (contentType === 'application/json' && typeof data === 'object' && data !== null) {
+  // RSA：json 整包加密；form-urlencoded 对 value 加密（upload 不走此方法）
+  if (RSA_ENABLED) {
+    try {
+      requestData = encryptRequestData(data, contentType)
+    } catch (e) {
+      console.error('RSA 请求加密失败:', e)
+      if (showLoading) uni.hideLoading()
+      return Promise.reject(e)
+    }
+  } else if (contentType === 'application/json' && typeof data === 'object' && data !== null) {
+    // 未开启 RSA 时保持原逻辑：json 手动序列化
     requestData = JSON.stringify(data)
   }
 
@@ -57,7 +71,7 @@ const request = (options = {}) => {
   const requestId = Date.now() + '_' + Math.random().toString(36).substr(2, 9)
   const startTime = Date.now()
 
-  // 记录请求日志
+  // 记录请求日志（加密开启时仅记录密文，避免明文落盘）
   logger.addLog(logger.formatRequestLog({
     url,
     method,
@@ -104,13 +118,23 @@ const request = (options = {}) => {
         },
         success: (res) => {
           const duration = Date.now() - startTime
-          const { statusCode, data, header } = res
+          const { statusCode, header: resHeader } = res
+          let { data } = res
+
+          // 响应解密（整包密文或 data 字段密文）
+          if (RSA_ENABLED && data != null) {
+            try {
+              data = decryptResponsePayload(data)
+            } catch (e) {
+              console.error('RSA 响应解密失败:', e)
+            }
+          }
 
           // 记录响应日志
           logger.addLog(logger.formatResponseLog({
             statusCode,
             data,
-            header
+            header: resHeader
           }, requestId, duration, url))
 
           if (statusCode === 200) {
@@ -180,7 +204,7 @@ const post = (url, data = {}, config = {}) => {
   })
 }
 
-// 文件上传方法（form-data）
+// 文件上传方法（form-data）——请求体不做 RSA；响应需解密
 const upload = (filePath, config = {}) => {
   const {
     url,
@@ -236,15 +260,24 @@ const upload = (filePath, config = {}) => {
       success: (res) => {
         const duration = Date.now() - startTime
         try {
-          const data = JSON.parse(res.data)
-          
-          // 记录上传响应日志
+          let data = JSON.parse(res.data)
+
+          // 上传请求体不加密，但响应 data 仍需 RSA 解密
+          if (RSA_ENABLED && data != null) {
+            try {
+              data = decryptResponsePayload(data)
+            } catch (e) {
+              console.error('RSA 上传响应解密失败:', e)
+            }
+          }
+
+          // 记录上传响应日志（解密后）
           logger.addLog(logger.formatResponseLog({
             statusCode: 200,
             data,
             header: res.header || {}
           }, requestId, duration, url))
-          
+
           // code === -1 表示登录失效，不提示，直接跳转登录（选择项目页）
           if (data && data.code === -1) {
             clearAuthStorage()
@@ -264,7 +297,7 @@ const upload = (filePath, config = {}) => {
         } catch (e) {
           // 记录解析错误日志
           logger.addLog(logger.formatErrorLog(e, requestId, duration, url))
-          
+
           uni.showToast({
             title: '上传响应解析失败',
             icon: 'none'

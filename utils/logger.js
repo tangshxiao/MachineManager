@@ -65,10 +65,11 @@ const printConsoleLog = (log) => {
     console.log('请求ID:', log.requestId)
     console.log('请求头:', log.requestHeader)
     if (log.requestData) {
-      try {
-        const data = typeof log.requestData === 'string' ? JSON.parse(log.requestData) : log.requestData
-        console.log('请求数据:', data)
-      } catch (e) {
+      // RSA 密文是合法 JSON 字符串时 JSON.parse 会剥掉引号，联调时改为原样打印
+      if (typeof log.requestData === 'string') {
+        console.log('请求数据(原始字符串):', log.requestData)
+        console.log('请求数据长度:', log.requestData.length)
+      } else {
         console.log('请求数据:', log.requestData)
       }
     }

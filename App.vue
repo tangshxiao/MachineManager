@@ -1,6 +1,7 @@
 <script>
 	import API_ENDPOINTS from '@/config/api.js';
 	import { scanBizQrCode } from '@/utils/scanBizQr.js'
+	import http from '@/utils/request.js'
 
 	export default {
 		onLaunch: function() {
@@ -39,43 +40,43 @@
 
 		methods: {
 			checkUpdate() {
-				plus.runtime.getProperty(plus.runtime.appid, (widgetInfo) => {
+				plus.runtime.getProperty(plus.runtime.appid, async (widgetInfo) => {
 					const currentVersion = widgetInfo.version ? widgetInfo.version.trim() : '1.0.0';
 					console.log('当前App版本:', currentVersion);
 
 					const systemInfo = uni.getSystemInfoSync();
 					let platformType = systemInfo.platform === 'ios' ? 1 : 0;
 
-					uni.request({
-						url: API_ENDPOINTS.APP_UPDATE_API,
-						method: 'POST',
-						header: {
-							'content-type': 'application/x-www-form-urlencoded'
-						},
-						data: {
-							_uid: 0,
-							platform: platformType,
-							version: currentVersion
-						},
-						success: (res) => {
-							console.log('检查更新返回:', res.data);
-
-							if (res.statusCode === 200 && res.data.data) {
-								const serverData = res.data.data;
-								const serverVersion = serverData.version;
-
-								if (serverVersion && this.compareVersion(serverVersion, currentVersion)) {
-									// 显示更新对话框前，按 uni-app 官方方式处理权限（如通知权限）
-									this.ensureUpdatePermission(() => {
-										this.showUpdateModal(serverData);
-									});
-								}
+					try {
+						// 走统一请求封装，自动 RSA 加解密
+						const serverData = await http.post(
+							API_ENDPOINTS.APP_UPDATE_API,
+							{
+								_uid: 0,
+								platform: platformType,
+								version: currentVersion
+							},
+							{
+								header: {
+									'Content-Type': 'application/x-www-form-urlencoded'
+								},
+								showLoading: false,
+								suppressNoNetworkToast: true
 							}
-						},
-						fail: (err) => {
-							console.error('检查更新请求失败', err);
+						)
+						console.log('检查更新返回:', serverData);
+
+						if (serverData) {
+							const serverVersion = serverData.version;
+							if (serverVersion && this.compareVersion(serverVersion, currentVersion)) {
+								this.ensureUpdatePermission(() => {
+									this.showUpdateModal(serverData);
+								});
+							}
 						}
-					});
+					} catch (err) {
+						console.error('检查更新请求失败', err);
+					}
 				});
 			},
 
