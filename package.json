@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "jsencrypt": "^3.5.4",
     "uqrcodejs": "^4.0.7"
   }
 }

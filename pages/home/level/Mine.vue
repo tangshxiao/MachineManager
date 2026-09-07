@@ -51,6 +51,10 @@
       </view>
       <image src="/static/icon_right_jt.png" mode="aspectFill" class="arrow-icon"></image>
     </view>
+
+    <view class="version-footer">
+      <text class="version-text">版本号 v{{ appVersion }}</text>
+    </view>
   </view>
 </template>
 
@@ -58,13 +62,42 @@
 import { scanBizQrCode } from '@/utils/scanBizQr.js'
 
 export default {
+  data() {
+    return {
+      appVersion: '--'
+    }
+  },
+  onShow() {
+    this.loadAppVersion()
+  },
   methods: {
+    loadAppVersion() {
+      let version = ''
+
+      try {
+        const appInfo = uni.getAppBaseInfo ? uni.getAppBaseInfo() : null
+        version = appInfo?.appVersion || appInfo?.version || ''
+      } catch (e) {}
+
+      if (!version && typeof plus !== 'undefined' && plus.runtime) {
+        version = plus.runtime.version || ''
+      }
+
+      if (!version) {
+        try {
+          const manifest = uni.getSystemInfoSync?.().appVersion || ''
+          version = manifest
+        } catch (e) {}
+      }
+
+      this.appVersion = version || '--'
+    },
+
     navigateTo(page) {
       console.log('Navigate to:', page);
     },
 	
 	selectProject(){
-		const that = this
 		uni.showModal({
 		  title: '提示',
 		  content: '确定要重新选择项目吗？',
@@ -267,6 +300,19 @@ export default {
 .arrow-icon {
   width: 28rpx;
   height: 28rpx;
+}
+
+.version-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 50rpx 0 20rpx;
+}
+
+.version-text {
+  font-size: 24rpx;
+  color: #8A8E9A;
+  letter-spacing: 1rpx;
 }
 
 /* Icon Font */
