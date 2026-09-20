@@ -1,6 +1,6 @@
 // API接口配置文件
 // 正式
-// const API_BASE_URL = 'http://ceec.chidi.com.cn:9527/app';
+// const API_BASE_URL = 'https://ceec.chidi.com.cn:8182/app';
 // 测试
  const API_BASE_URL = 'https://machine.tool.zhishanglianpin.com/app';
 

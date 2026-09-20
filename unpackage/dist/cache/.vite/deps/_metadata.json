@@ -1,8 +1,15 @@
 {
-  "hash": "5f694702",
+  "hash": "0138de63",
   "configHash": "de8c8f0d",
-  "lockfileHash": "cc8d2fd8",
-  "browserHash": "0e5fbba6",
-  "optimized": {},
+  "lockfileHash": "5060282e",
+  "browserHash": "3e1d8f69",
+  "optimized": {
+    "jsencrypt": {
+      "src": "../../../../../node_modules/jsencrypt/lib/index.js",
+      "file": "jsencrypt.js",
+      "fileHash": "037237a8",
+      "needsInterop": false
+    }
+  },
   "chunks": {}
 }
