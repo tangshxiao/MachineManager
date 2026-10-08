@@ -3,7 +3,8 @@ import logger from './logger.js'
 import {
   RSA_ENABLED,
   encryptRequestData,
-  decryptResponsePayload
+  decryptResponsePayload,
+  tryParseJson
 } from './rsa.js'
 
 // 统一无网络提示文案
@@ -22,6 +23,25 @@ function clearAuthStorage() {
   uni.removeStorageSync('token')
   uni.removeStorageSync('Authorization')
   uni.removeStorageSync('selectedProjectIds')
+}
+
+/**
+ * form-urlencoded 手动序列化。
+ * RSA Base64 密文含 + / = 等字符，不能依赖框架默认拼接，否则会被当成空格/截断。
+ */
+function toFormUrlEncoded(data) {
+  if (data == null) return ''
+  if (typeof data === 'string') return data
+  if (typeof data !== 'object' || Array.isArray(data)) return ''
+  return Object.keys(data).map((key) => {
+    const raw = data[key]
+    const value = raw === undefined || raw === null ? '' : String(raw)
+    return `${encodeURIComponent(key)}=${encodeURIComponent(value)}`
+  }).join('&')
+}
+
+function isJsonContentType(contentType = '') {
+  return String(contentType).toLowerCase().includes('application/json')
 }
 
 // 核心请求方法
@@ -57,12 +77,16 @@ const request = (options = {}) => {
   if (RSA_ENABLED) {
     try {
       requestData = encryptRequestData(data, contentType)
+      // 加密后的 form 值必须手动 encode，避免 +/= 等特殊字符被 URL 拼接破坏
+      if (!isJsonContentType(contentType) && requestData && typeof requestData === 'object' && !Array.isArray(requestData)) {
+        requestData = toFormUrlEncoded(requestData)
+      }
     } catch (e) {
       console.error('RSA 请求加密失败:', e)
       if (showLoading) uni.hideLoading()
       return Promise.reject(e)
     }
-  } else if (contentType === 'application/json' && typeof data === 'object' && data !== null) {
+  } else if (isJsonContentType(contentType) && typeof data === 'object' && data !== null) {
     // 未开启 RSA 时保持原逻辑：json 手动序列化
     requestData = JSON.stringify(data)
   }
@@ -147,7 +171,12 @@ const request = (options = {}) => {
               return
             }
             if (data && data.code === 0) {
-              resolve(data.data)
+              // 兼容 data 仍是 JSON 字符串 / 某条脏数据导致整段 JSON 损坏
+              let payload = data.data
+              if (typeof payload === 'string') {
+                payload = tryParseJson(payload)
+              }
+              resolve(payload)
             } else {
               uni.showToast({
                 title: (data && data.msg) || '请求失败',
@@ -286,7 +315,11 @@ const upload = (filePath, config = {}) => {
             return
           }
           if (data && data.code === 0) {
-            resolve(data.data)
+            let payload = data.data
+            if (typeof payload === 'string') {
+              payload = tryParseJson(payload)
+            }
+            resolve(payload)
           } else {
             uni.showToast({
               title: (data && data.msg) || '上传失败',

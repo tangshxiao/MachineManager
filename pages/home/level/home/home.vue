@@ -130,7 +130,7 @@
 	import http from '@/utils/request.js'
 	import API_ENDPOINTS from '@/config/api.js'
 	import { markRecordUploaded, getCacheStats, getAwaitingUploadRecords } from '@/utils/offlineCache.js'
-	import { saveSuccessRecord } from '@/utils/successRecordCache.js'
+	import { getSuccessRecords, saveSuccessRecord } from '@/utils/successRecordCache.js'
 	import { ensureAddressForUpload } from '@/utils/locationAddress.js'
 	import { resolveAttendanceScope } from '@/utils/attendanceCheck.js'
 	import { getInScopeLabel, getInScopeTagClass, resolveInScopeFromRecord } from '@/utils/inScope.js'
@@ -148,6 +148,7 @@
       attendanceList: [],
       attendanceCurrent: 1,
       attendanceSize: 10,
+      attendanceReqSeq: 0,
       // 常用设备分页
       deviceList: [],
       deviceCurrent: 1,
@@ -184,24 +185,21 @@
     this.syncSelectedProjectIdsFromStorage()
     this.restoreHomeListsFromCache()
     this.loadDeviceStatusOptions()
-    this.loadAttendanceList()
-    this.loadDeviceList()
   },
 
-  onShow() {
+  async onShow() {
     // 从本地存储读取选择的项目 IDs
     this.syncSelectedProjectIdsFromStorage()
-    // 先恢复本地缓存，确保断网/重启后能立即显示
+    // 先恢复本地缓存和刚打卡成功的记录，避免接口返回前闪一下空列表
     this.restoreHomeListsFromCache()
     this.loadDeviceStatusOptions()
-    // 刷新打卡记录和设备列表（重置到第一页，确保显示最新数据）
+    // 先确认网络，再拉列表，避免默认在线时发出的请求后返回空数据把列表清掉
     this.attendanceCurrent = 1
     this.deviceCurrent = 1
+    await this.checkNetworkStatus()
     this.loadAttendanceList()
     this.loadDeviceList()
     this.refreshCacheStats()
-    // 检测网络状态和待上传记录
-    this.checkNetworkStatus()
   },
 
   methods: {
@@ -229,15 +227,56 @@
     restoreHomeListsFromCache() {
       const attendanceCachedRecords = this.getCachedList(HOME_ATTENDANCE_LIST_CACHE_KEY)
       const deviceCachedRecords = this.getCachedList(HOME_DEVICE_LIST_CACHE_KEY)
-      if (attendanceCachedRecords.length > 0) {
-        this.attendanceList = attendanceCachedRecords.map((item) => ({
-          ...item,
-          inScope: resolveInScopeFromRecord(item)
-        }))
+      const attendanceRecords = this.mergeAttendanceRecords(attendanceCachedRecords, getSuccessRecords())
+      if (attendanceRecords.length > 0) {
+        this.attendanceList = attendanceRecords
       }
       if (deviceCachedRecords.length > 0) {
         this.deviceList = deviceCachedRecords
       }
+    },
+
+    mapAttendanceItem(item = {}) {
+      return {
+        ...item,
+        name: item.name || item.deviceName || '',
+        deviceName: item.deviceName || item.name || '',
+        inScope: resolveInScopeFromRecord(item)
+      }
+    },
+
+    attendanceRecordKey(item = {}) {
+      const time = String(item.time || '').trim()
+      if (item.qrNo && time) return `qr:${item.qrNo}_${time}`
+      if (item.deviceNo && time) return `dev:${item.deviceNo}_${time}`
+      return item.id ? `id:${item.id}` : ''
+    },
+
+    mergeAttendanceRecords(serverRecords = [], localRecords = []) {
+      const merged = []
+      const seen = new Set()
+      const push = (item) => {
+        if (!item) return
+        const mapped = this.mapAttendanceItem(item)
+        const key = this.attendanceRecordKey(mapped)
+        if (key && seen.has(key)) return
+        if (key) seen.add(key)
+        merged.push(mapped)
+      }
+      serverRecords.forEach(push)
+      localRecords.forEach(push)
+      merged.sort((a, b) => String(b.time || '').localeCompare(String(a.time || '')))
+      return merged.slice(0, this.attendanceSize || 10)
+    },
+
+    extractAttendanceRecords(res) {
+      if (Array.isArray(res)) return res
+      if (!res || typeof res !== 'object') return []
+      if (Array.isArray(res.records)) return res.records
+      if (Array.isArray(res.list)) return res.list
+      if (res.data && Array.isArray(res.data.records)) return res.data.records
+      if (Array.isArray(res.data)) return res.data
+      return []
     },
 
     saveAttendanceCache(records = []) {
@@ -274,13 +313,13 @@
     },
 
     async loadAttendanceList() {
+      const reqId = ++this.attendanceReqSeq
       const cachedRecords = this.getCachedList(HOME_ATTENDANCE_LIST_CACHE_KEY)
+      const localRecords = getSuccessRecords()
+      const fallbackRecords = this.mergeAttendanceRecords(cachedRecords, localRecords)
       if (!this.isOnline) {
-        if (cachedRecords.length > 0) {
-          this.attendanceList = cachedRecords.map((item) => ({
-            ...item,
-            inScope: resolveInScopeFromRecord(item)
-          }))
+        if (fallbackRecords.length > 0) {
+          this.attendanceList = fallbackRecords
         }
         return
       }
@@ -289,24 +328,27 @@
           current: this.attendanceCurrent,
           size: this.attendanceSize
         })
-        const records = (res && res.records) || []
-        this.attendanceList = records.map((item) => ({
-          ...item,
-          inScope: resolveInScopeFromRecord(item)
-        }))
-        if (records.length > 0) {
-          this.saveAttendanceCache(records)
+        if (reqId !== this.attendanceReqSeq) return
+        const records = this.extractAttendanceRecords(res)
+        // 接口空列表不能覆盖已经显示的缓存/刚打卡成功的记录
+        const baseRecords = records.length > 0 ? records : cachedRecords
+        const mergedRecords = this.mergeAttendanceRecords(baseRecords, localRecords)
+        if (mergedRecords.length > 0) {
+          this.attendanceList = mergedRecords
+          if (records.length > 0) {
+            this.saveAttendanceCache(mergedRecords)
+          }
+        } else {
+          this.attendanceList = []
         }
         this.attendanceCurrent = (res && res.current) || this.attendanceCurrent
         this.attendanceSize = (res && res.size) || this.attendanceSize
         console.log('最近打卡记录 attendanceList:', this.attendanceList)
       } catch (e) {
+        if (reqId !== this.attendanceReqSeq) return
         console.error('获取最近打卡记录失败:', e)
-        if (cachedRecords.length > 0) {
-          this.attendanceList = cachedRecords.map((item) => ({
-            ...item,
-            inScope: resolveInScopeFromRecord(item)
-          }))
+        if (fallbackRecords.length > 0) {
+          this.attendanceList = fallbackRecords
           return
         }
         if (e && typeof e === 'object' && e.code !== undefined && e.code !== 0) {
@@ -642,12 +684,7 @@
 		uni.getNetworkType({
 		  success: (res) => {
 			const isOnline = res.networkType !== 'none' && res.networkType !== 'unknown'
-			const prevOnline = this.isOnline
 			this.isOnline = isOnline
-			if (prevOnline !== isOnline) {
-			  this.loadAttendanceList()
-			  this.loadDeviceList()
-			}
 			// 重新获取统计数据，确保提示文案与缓存一致
 			this.refreshCacheStats()
 			const hasPending = this.cacheStats.pending > 0
@@ -832,7 +869,12 @@
 	  // 重新检测网络状态和待上传记录，更新提示显示状态
 	  // 使用 $nextTick 确保计算属性已更新
 	  this.$nextTick(() => {
-		this.checkNetworkStatus()
+		this.checkNetworkStatus().then(() => {
+		  if (successCount > 0) {
+			this.loadAttendanceList()
+			this.loadDeviceList()
+		  }
+		})
 	  })
 	}
   }

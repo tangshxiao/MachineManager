@@ -298,7 +298,67 @@ export function encryptRequestData(data, contentType = '') {
 }
 
 /**
+ * 从损坏的分页列表 JSON 中抢救可用 records。
+ * 典型场景：某条 name 乱码且缺少结束引号，导致整段 JSON.parse 失败。
+ */
+function salvageListPayload(text) {
+  if (!text || text.indexOf('"records"') === -1) return null
+
+  const records = []
+  const recordRe = /\{\s*"id"\s*:\s*(-?\d+)\s*,\s*"name"\s*:\s*"((?:[^"\\]|\\.)*)"\s*\}/g
+  let match
+  while ((match = recordRe.exec(text)) !== null) {
+    records.push({
+      id: Number(match[1]),
+      name: match[2]
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, '\\')
+        .replace(/\\n/g, '\n')
+        .replace(/\\r/g, '\r')
+        .replace(/\\t/g, '\t')
+    })
+  }
+  if (!records.length) return null
+
+  const pickNum = (key) => {
+    const m = text.match(new RegExp(`"${key}"\\s*:\\s*(\\d+)`))
+    return m ? Number(m[1]) : undefined
+  }
+
+  const result = { records }
+  const total = pickNum('total')
+  const size = pickNum('size')
+  const current = pickNum('current')
+  result.total = total != null ? total : records.length
+  if (size != null) result.size = size
+  if (current != null) result.current = current
+  return result
+}
+
+/**
+ * 尝试把字符串解析成 JSON；失败则尝试抢救 records，再不行原样返回
+ */
+export function tryParseJson(value) {
+  if (typeof value !== 'string') return value
+  const text = value.trim()
+  if (!text || (text.charAt(0) !== '{' && text.charAt(0) !== '[' && text.charAt(0) !== '"')) {
+    return value
+  }
+  try {
+    return JSON.parse(text)
+  } catch (e) {
+    const salvaged = salvageListPayload(text)
+    if (salvaged) {
+      console.warn('响应 JSON 损坏，已跳过异常记录并恢复列表。原始错误:', e && e.message)
+      return salvaged
+    }
+    return value
+  }
+}
+
+/**
  * 解密响应：支持整包密文字符串，或 { code, data, msg } 中 data 为密文
+ * 若后端返回明文 JSON 字符串（未加密），也会自动 parse 成对象
  */
 export function decryptResponsePayload(payload) {
   if (!RSA_ENABLED || payload == null) return payload
@@ -308,13 +368,11 @@ export function decryptResponsePayload(payload) {
   if (typeof payload === 'string') {
     const decrypted = rsaDecrypt(payload)
     if (decrypted == null) {
-      logRsa('解密后 (跳过: 非密文或解密失败)', payload)
-      return payload
+      const parsed = tryParseJson(payload)
+      logRsa('解密后 (跳过密文，尝试明文JSON)', parsed)
+      return parsed
     }
-    let result = decrypted
-    try {
-      result = JSON.parse(decrypted)
-    } catch (e) {}
+    let result = tryParseJson(decrypted)
     logRsa('解密后', result)
     return result
   }
@@ -322,15 +380,17 @@ export function decryptResponsePayload(payload) {
   if (typeof payload === 'object' && typeof payload.data === 'string') {
     const decrypted = rsaDecrypt(payload.data)
     if (decrypted == null) {
-      logRsa('解密后 (跳过: data 非密文或解密失败)', payload)
-      return payload
+      // 常见：正式环境 data 是明文 JSON 字符串，不是 RSA 密文
+      const parsed = tryParseJson(payload.data)
+      const result = {
+        ...payload,
+        data: parsed
+      }
+      logRsa('解密后 (data为明文JSON字符串)', result)
+      return result
     }
 
-    let data = decrypted
-    try {
-      data = JSON.parse(decrypted)
-    } catch (e) {}
-
+    const data = tryParseJson(decrypted)
     const result = {
       ...payload,
       data
@@ -349,5 +409,6 @@ export default {
   rsaEncrypt,
   rsaDecrypt,
   encryptRequestData,
-  decryptResponsePayload
+  decryptResponsePayload,
+  tryParseJson
 }

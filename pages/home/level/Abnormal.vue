@@ -300,14 +300,14 @@ export default {
         } else {
           console.error('获取异常上报类型失败: 数据格式错误', res);
           uni.showToast({
-            title: '加载异常类型失败',
+            title: '网络异常，加载失败',
             icon: 'none'
           });
         }
       } catch (e) {
         console.error('获取异常上报类型失败:', e);
         uni.showToast({
-          title: '加载异常类型失败',
+          title: '网络异常，加载失败',
           icon: 'none'
         });
       }
